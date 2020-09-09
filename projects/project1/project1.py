@@ -56,8 +56,8 @@ def r_squared(y_observed, y_predicted):
 
 def create_design_matrix(x1, x2, N, deg):
     """
-    Construct a design matrix with N rows and features =
-    (deg + 1)*(deg + 2)/2 columns.  N is the number of samples and
+    Construct a design matrix with N**2 rows and features =
+    (deg + 1)*(deg + 2)/2 columns.  N**2 is the number of samples and
     features is the number of features of the design matrix.
 
     Parameters
@@ -70,7 +70,7 @@ def create_design_matrix(x1, x2, N, deg):
         Dependent / outcome / response variable. Is it, though?
 
     N : int
-        The number of data points.
+        The number of randomly drawn data ponts per variable.
 
     deg : int
         The polynomial degree.
@@ -106,73 +106,59 @@ def create_design_matrix(x1, x2, N, deg):
                 X[i, col_idx] = (x1[i]**k)*(x2[i]**(j - k))
                 col_idx += 1
 
-    
-    # for i in range(1, deg+1):
-    #     """
-    #     Runs through all polynomial degrees.
-    #     """
-    #     for j in range(i+1):
-    #         """
-    #         Runs through all combinations of x and y which produces an
-    #         i'th degree polynomial.
-    #         """
-    #         X[:, idx] = (x1**j)*(x2**(i - j))
-    #         idx += 1
-    
     return X
 
 
 def solve(debug=False):
     np.random.seed(1337)
-    N = 3      # Number of data ponts.
+    N = 1000      # Number of randomly drawn data ponts per variable.
     deg = 2    # Polynomial degree.
     x1 = np.random.random(size=N)
     x2 = np.random.random(size=N)
 
     x1, x2 = np.meshgrid(x1, x2)
 
-    y_observed = franke_function(x1, x2)    # Is observed a good name?
+    y_observed = franke_function(x1, x2).ravel()    # Is observed a good name?
     X = create_design_matrix(x1, x2, N, deg)
 
-    print(X)
 
-    # # y_observed += 0.1*np.random.randn(N) # Stochastic noise.
+    # y_observed += 0.1*np.random.randn(N) # Stochastic noise.
 
-    # X_train, X_test, y_train, y_test = \
-    #     train_test_split(X, y_observed, test_size=0.2)
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y_observed, test_size=0.2)
 
     # print("x train")
     # print(X_train)
     # X_train = X_train.reshape(-1, 1)
     # X_test = X_test.reshape(-1, 1)
 
-    # # HOW TO PROPERLY USE THE SCALING?
-    # scaler = StandardScaler()
-    # scaler.fit(X_train)     # Compute the mean and std for later scaling.
-    # X_train = scaler.transform(X_train)
-    # X_test = scaler.transform(X_test)
+    # HOW TO PROPERLY USE THE SCALING?
+    scaler = StandardScaler()
+    scaler.fit(X_train)     # Compute the mean and std for later scaling.
+    X_train = scaler.transform(X_train)
+    X_test = scaler.transform(X_test)
     # print("x train")
     # print(X_train)
 
     # X_train = X_train.reshape(-1, 1)
     # X_test = X_test.reshape(-1, 1)
 
-    # # beta = np.linalg.inv(X_train.T@X_train)@X_train.T@y_train
-    # beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
+    # beta = np.linalg.inv(X_train.T@X_train)@X_train.T@y_train
+    beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
 
     # print("x")
     # print(beta)
 
-    # y_tilde = X_train@beta
-    # y_predict = X_test@beta
+    y_tilde = X_train@beta
+    y_predict = X_test@beta
 
-    # if debug:
-    #     print("train")
-    #     print(f"R^2: {r_squared(y_train, y_tilde)}")
-    #     print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
-    #     print("test")
-    #     print(f"R^2: {r_squared(y_test, y_predict)}")
-    #     print(f"MSE: {mean_squared_error(y_test, y_predict)}")
+    if debug:
+        print("train")
+        print(f"R^2: {r_squared(y_train, y_tilde)}")
+        print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
+        print("test")
+        print(f"R^2: {r_squared(y_test, y_predict)}")
+        print(f"MSE: {mean_squared_error(y_test, y_predict)}")
 
 def compare():
     pass
