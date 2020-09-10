@@ -1,7 +1,10 @@
+import time
 import numpy as np
+import matplotlib.pyplot as plt
+import sklearn.metrics as skl
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
+from numba import jit
 
 def franke_function(x1, x2):
     return 0.75*np.exp(-(0.25*(9*x1 - 2)**2) - 0.25*((9*x2 - 2)**2)) \
@@ -54,6 +57,7 @@ def r_squared(y_observed, y_predicted):
         np.sum((y_observed - np.mean(y_observed))**2)
 
 
+@jit
 def create_design_matrix(x1, x2, N, deg):
     """
     Construct a design matrix with N**2 rows and features =
@@ -87,78 +91,72 @@ def create_design_matrix(x1, x2, N, deg):
     
     features = int((deg + 1)*(deg + 2)/2)
     X = np.empty((N**2, features))     # Data points x features.
-    X[:, 0] = 1     # Intercept.
-
-    for i in range(N**2):
+    X[:, 0] = 1 # Intercept.
+    col_idx = 1 # For indexing the design matrix columns.
+    
+    for j in range(1, deg+1):
         """
-        Loop over all pairs of values in x1 and x2.
+        Loop over all degrees except 0.
         """
-        col_idx = 1 # For indexing the design matrix columns.
-        for j in range(1, deg+1):
+        for k in range(j+1):
             """
-            Loop over all degrees except 0.
+            Loop over all combinations of x1 and x2 which produces
+            an j'th degree term.
             """
-            for k in range(j+1):
-                """
-                Loop over all combinations of x1 and x2 which produces
-                an j'th degree term.
-                """
-                X[i, col_idx] = (x1[i]**k)*(x2[i]**(j - k))
-                col_idx += 1
+            X[:, col_idx] = (x1**k)*(x2**(j - k))
+            col_idx += 1
 
     return X
 
 
 def solve(debug=False):
-    np.random.seed(1337)
-    N = 1000      # Number of randomly drawn data ponts per variable.
+    # np.random.seed(1337)
+    N = 4     # Number of randomly drawn data ponts per variable.
     deg = 2    # Polynomial degree.
-    x1 = np.random.random(size=N)
-    x2 = np.random.random(size=N)
+    x1, x2 = np.meshgrid(np.random.random(size=N), np.random.random(size=N))
 
-    x1, x2 = np.meshgrid(x1, x2)
-
-    y_observed = franke_function(x1, x2).ravel()    # Is observed a good name?
+    y_observed = franke_function(x1, x2).ravel()
+    y_observed += 0.1*np.random.randn(N**2) # Stochastic noise.
+    
+    create_time = time.time()
     X = create_design_matrix(x1, x2, N, deg)
+    create_time = time.time() - create_time
+    print(f"design matrix created in {create_time:.3f} s")
 
+    print(X)
+    
+    # X_train, X_test, y_train, y_test = \
+    #     train_test_split(X, y_observed, test_size=0.2)
 
-    # y_observed += 0.1*np.random.randn(N) # Stochastic noise.
+    # # scaler = StandardScaler()
+    # # scaler.fit(X_train)     # Compute the mean and std for later scaling.
+    # # X_train = scaler.transform(X_train)
+    # # X_test = scaler.transform(X_test)
 
-    X_train, X_test, y_train, y_test = \
-        train_test_split(X, y_observed, test_size=0.2)
+    # # Scaling.
+    # X_mean = np.mean(X_train)
+    # X_std = np.std(X_train)
+    # X_train = (X_train - X_mean)/X_std
+    # X_test = (X_test - X_mean)/X_std
 
-    # print("x train")
-    # print(X_train)
-    # X_train = X_train.reshape(-1, 1)
-    # X_test = X_test.reshape(-1, 1)
+    # beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
 
-    # HOW TO PROPERLY USE THE SCALING?
-    scaler = StandardScaler()
-    scaler.fit(X_train)     # Compute the mean and std for later scaling.
-    X_train = scaler.transform(X_train)
-    X_test = scaler.transform(X_test)
-    # print("x train")
-    # print(X_train)
+    # y_tilde = X_train@beta
+    # y_predict = X_test@beta
 
-    # X_train = X_train.reshape(-1, 1)
-    # X_test = X_test.reshape(-1, 1)
-
-    # beta = np.linalg.inv(X_train.T@X_train)@X_train.T@y_train
-    beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
-
-    # print("x")
-    # print(beta)
-
-    y_tilde = X_train@beta
-    y_predict = X_test@beta
-
-    if debug:
-        print("train")
-        print(f"R^2: {r_squared(y_train, y_tilde)}")
-        print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
-        print("test")
-        print(f"R^2: {r_squared(y_test, y_predict)}")
-        print(f"MSE: {mean_squared_error(y_test, y_predict)}")
+    # if debug:
+    #     print("\ntrain")
+    #     print(f"R^2: {r_squared(y_train, y_tilde)}")
+    #     print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
+    #     print("train (sklearn)")
+    #     print(f"R^2: {skl.r2_score(y_train, y_tilde)}")
+    #     print(f"MSE: {skl.mean_squared_error(y_train, y_tilde)}")
+    #     print("\ntest")
+    #     print(f"R^2: {r_squared(y_test, y_predict)}")
+    #     print(f"MSE: {mean_squared_error(y_test, y_predict)}")
+    #     print("test (sklearn)")
+    #     print(f"R^2: {skl.r2_score(y_test, y_predict)}")
+    #     print(f"MSE: {skl.mean_squared_error(y_test, y_predict)}")
 
 def compare():
     pass
