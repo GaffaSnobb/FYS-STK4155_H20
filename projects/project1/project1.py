@@ -101,7 +101,7 @@ def create_design_matrix(x1, x2, N, deg):
             Loop over all combinations of x1 and x2 which produces
             an j'th degree term.
             """
-            X[:, col_idx] = (x1**k)*(x2**(j - k))
+            X[:, col_idx] = (x1**(j - k))*x2**k
             col_idx += 1
 
     return X
@@ -113,6 +113,9 @@ def solve(debug=False):
     deg = 5    # Polynomial degree.
     x1, x2 = np.meshgrid(np.random.random(size=N), np.random.random(size=N))
 
+    # x1 = np.random.rand(N**2)
+    # x2 = np.random.rand(N**2)
+
     y_observed = franke_function(x1, x2).ravel()
     y_observed += 0.1*np.random.randn(N**2) # Stochastic noise.
     
@@ -120,41 +123,41 @@ def solve(debug=False):
     X = create_design_matrix(x1, x2, N, deg)
     create_time = time.time() - create_time
     print(f"design matrix created in {create_time:.3f} s")
-
-    # print(X)
+    print(f"design matrix dimensions {X.shape}")
     
-    # X_train, X_test, y_train, y_test = \
-    #     train_test_split(X, y_observed, test_size=0.2)
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y_observed, test_size=0.2)
 
-    # # scaler = StandardScaler()
-    # # scaler.fit(X_train)     # Compute the mean and std for later scaling.
-    # # X_train = scaler.transform(X_train)
-    # # X_test = scaler.transform(X_test)
+    # Scaling.
+    X_mean = np.mean(X_train)
+    X_std = np.std(X_train)
+    X_train = (X_train - X_mean)/X_std
+    X_test = (X_test - X_mean)/X_std
 
-    # # Scaling.
-    # X_mean = np.mean(X_train)
-    # X_std = np.std(X_train)
-    # X_train = (X_train - X_mean)/X_std
-    # X_test = (X_test - X_mean)/X_std
+    inversion_time = time.time()
+    beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
+    inversion_time = time.time() - inversion_time
+    print(f"solved for beta in {inversion_time:.3f} s")
 
-    # beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
+    y_tilde = X_train@beta
+    y_predict = X_test@beta
 
-    # y_tilde = X_train@beta
-    # y_predict = X_test@beta
-
-    # if debug:
-    #     print("\ntrain")
-    #     print(f"R^2: {r_squared(y_train, y_tilde)}")
-    #     print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
-    #     print("train (sklearn)")
-    #     print(f"R^2: {skl.r2_score(y_train, y_tilde)}")
-    #     print(f"MSE: {skl.mean_squared_error(y_train, y_tilde)}")
-    #     print("\ntest")
-    #     print(f"R^2: {r_squared(y_test, y_predict)}")
-    #     print(f"MSE: {mean_squared_error(y_test, y_predict)}")
-    #     print("test (sklearn)")
-    #     print(f"R^2: {skl.r2_score(y_test, y_predict)}")
-    #     print(f"MSE: {skl.mean_squared_error(y_test, y_predict)}")
+    if debug:
+        print("\ntrain")
+        print(f"R^2: {r_squared(y_train, y_tilde)}")
+        print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
+        
+        print("train (sklearn)")
+        print(f"R^2: {skl.r2_score(y_train, y_tilde)}")
+        print(f"MSE: {skl.mean_squared_error(y_train, y_tilde)}")
+        
+        print("\ntest")
+        print(f"R^2: {r_squared(y_test, y_predict)}")
+        print(f"MSE: {mean_squared_error(y_test, y_predict)}")
+        
+        print("test (sklearn)")
+        print(f"R^2: {skl.r2_score(y_test, y_predict)}")
+        print(f"MSE: {skl.mean_squared_error(y_test, y_predict)}")
 
 def compare():
     pass
