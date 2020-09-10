@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import sklearn.metrics as skl
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from numba import jit
 
 def franke_function(x1, x2):
     return 0.75*np.exp(-(0.25*(9*x1 - 2)**2) - 0.25*((9*x2 - 2)**2)) \
@@ -57,7 +56,6 @@ def r_squared(y_observed, y_predicted):
         np.sum((y_observed - np.mean(y_observed))**2)
 
 
-@jit
 def create_design_matrix(x1, x2, N, deg):
     """
     Construct a design matrix with N**2 rows and features =
@@ -93,7 +91,7 @@ def create_design_matrix(x1, x2, N, deg):
     X = np.empty((N**2, features))     # Data points x features.
     X[:, 0] = 1 # Intercept.
     col_idx = 1 # For indexing the design matrix columns.
-    
+
     for j in range(1, deg+1):
         """
         Loop over all degrees except 0.
@@ -111,8 +109,8 @@ def create_design_matrix(x1, x2, N, deg):
 
 def solve(debug=False):
     # np.random.seed(1337)
-    N = 4     # Number of randomly drawn data ponts per variable.
-    deg = 2    # Polynomial degree.
+    N = 1000     # Number of randomly drawn data ponts per variable.
+    deg = 5    # Polynomial degree.
     x1, x2 = np.meshgrid(np.random.random(size=N), np.random.random(size=N))
 
     y_observed = franke_function(x1, x2).ravel()
@@ -123,7 +121,7 @@ def solve(debug=False):
     create_time = time.time() - create_time
     print(f"design matrix created in {create_time:.3f} s")
 
-    print(X)
+    # print(X)
     
     # X_train, X_test, y_train, y_test = \
     #     train_test_split(X, y_observed, test_size=0.2)
