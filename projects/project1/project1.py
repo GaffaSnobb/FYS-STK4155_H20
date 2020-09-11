@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn.metrics as skl
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 def franke_function(x1, x2):
     return 0.75*np.exp(-(0.25*(9*x1 - 2)**2) - 0.25*((9*x2 - 2)**2)) \
@@ -107,17 +106,56 @@ def create_design_matrix(x1, x2, N, deg):
     return X
 
 
-def solve(debug=False):
-    # np.random.seed(1337)
-    N = 1000     # Number of randomly drawn data ponts per variable.
-    deg = 5    # Polynomial degree.
+def solve(deg, N=34, noise_factor=0.15, debug=False):
+    """
+    Solve the OLS on the Franke function.
+
+    Draw N random numbers in the inverval [0, 1) for both random
+    variables, x1 and x2.  Make a meshgrid of x1 and x2 to ensure all
+    combinations of x1 and x2 values.  Pass the meshgrids to the Franke
+    function, ravel the resulting array for easier calculations and add
+    stochastic noise drawn from the standard normal distribution.
+    Create the design matrix X based on the meshgrids, the number of
+    randomly drawn points and the polynomial degree.  Split the data
+    into training and test sets.  Scale the data by subtracting the mean
+    and dividing by the standard deviation.  Solve for the vector beta
+    by matrix inversion and matrix multiplication.  Use the beta vector
+    to generate model data (y_tilde) and predicted data (y_predict).
+    Return the R^2 score and MSE for both training and test data sets.
+
+    Parameters
+    ----------
+    deg : int
+        Polynomial degree.
+
+    N : int
+        The number of data points per random variable.  The resulting
+        meshgrids will measure NxN values.
+
+    noise_factor : int, float
+        The factor of added stochastic noise.
+
+    debug : boolean
+        For toggling print of debug data on / off.
+
+    Returns
+    -------
+    r_score_train : float
+        The R^2 value of the training set.
+    
+    mse_train : float
+        The mean squared error of the training set.
+
+    r_score_test : float
+        The R^2 value of the test set.
+
+    mse_test : float
+        The mean squared error of the test set.
+    """
     x1, x2 = np.meshgrid(np.random.random(size=N), np.random.random(size=N))
 
-    # x1 = np.random.rand(N**2)
-    # x2 = np.random.rand(N**2)
-
     y_observed = franke_function(x1, x2).ravel()
-    y_observed += 0.1*np.random.randn(N**2) # Stochastic noise.
+    y_observed += noise_factor*np.random.randn(N**2) # Stochastic noise.
     
     create_time = time.time()
     X = create_design_matrix(x1, x2, N, deg)
@@ -142,26 +180,62 @@ def solve(debug=False):
     y_tilde = X_train@beta
     y_predict = X_test@beta
 
+    r_score_train = r_squared(y_train, y_tilde)
+    mse_train = mean_squared_error(y_train, y_tilde)
+    r_score_test = r_squared(y_test, y_predict)
+    mse_test = mean_squared_error(y_test, y_predict)
+
     if debug:
         print("\ntrain")
-        print(f"R^2: {r_squared(y_train, y_tilde)}")
-        print(f"MSE: {mean_squared_error(y_train, y_tilde)}")
+        print(f"R^2: {r_score_train}")
+        print(f"MSE: {mse_train}")
         
         print("train (sklearn)")
         print(f"R^2: {skl.r2_score(y_train, y_tilde)}")
         print(f"MSE: {skl.mean_squared_error(y_train, y_tilde)}")
         
         print("\ntest")
-        print(f"R^2: {r_squared(y_test, y_predict)}")
-        print(f"MSE: {mean_squared_error(y_test, y_predict)}")
+        print(f"R^2: {r_score_test}")
+        print(f"MSE: {mse_test}")
         
         print("test (sklearn)")
         print(f"R^2: {skl.r2_score(y_test, y_predict)}")
         print(f"MSE: {skl.mean_squared_error(y_test, y_predict)}")
 
+    return r_score_train, mse_train, r_score_test, mse_test
+
 def compare():
-    pass
+    """
+    Call 'solve' with a range of polynomial degrees and plot the R score
+    and mean squared error as a function of the polynomial degree.
+    """
+    # np.random.seed(1337)
+    degrees = np.arange(1, 20+1, 1)
+    N_degrees = len(degrees)
+    N = 20
+    noise_factor = 0.15
+    
+    r_score_train = np.empty(N_degrees)
+    mse_train = np.empty(N_degrees)
+    r_score_test = np.empty(N_degrees)
+    mse_test = np.empty(N_degrees)
+
+    for i in range(N_degrees):
+        r_score_train[i], mse_train[i], r_score_test[i], mse_test[i] = \
+            solve(degrees[i], N, noise_factor, debug=False)
+
+    # plt.plot(degrees, r_score_train, label="r_score_train")
+    plt.semilogy(degrees, mse_train, label="mse_train")
+    # plt.plot(degrees, r_score_test, label="r_score_test")
+    plt.semilogy(degrees, mse_test, label="mse_test")
+    plt.xlabel("ploynomial degree")
+    plt.ylabel("MSE")
+    plt.legend()
+    plt.show()
+
+
+    
 
 if __name__ == "__main__":
-    solve(debug=True)
-    # compare()
+    # solve(debug=True)
+    compare()
