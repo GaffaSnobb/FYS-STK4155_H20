@@ -1,7 +1,6 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-import sklearn.metrics as skl
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
 
@@ -35,7 +34,7 @@ def mean_squared_error(y_observed, y_predicted):
     # return np.sum((y_observed - y_predicted)**2)/len(y_observed)
     return np.mean((y_observed - y_predicted)**2)
 
-def bias(f, y_observed):
+def bias(f, y):
     """
     Calculate the bias.
 
@@ -44,16 +43,14 @@ def bias(f, y_observed):
     f : numpy.ndarray
         Function values.
 
-    y_observed : numpy.ndarray
-        (AKA y_tilde)
+    y : numpy.ndarray
 
     Returns
     -------
     : numpy.ndarray
         The bias.
     """
-    
-    return mean_squared_error(f, np.mean(y_observed))
+    return mean_squared_error(f, np.mean(y))
 
 
 def r_squared(y_observed, y_predicted):
@@ -202,10 +199,7 @@ def solve(deg, N=34, noise_factor=0.15, debug_info=False, timing_info=False):
 
     betaa = np.linalg.pinv(X_train.T@X_train)@X_train.T@y_train
 
-    # y_tilde = X_train@beta
-    # y_predict = X_test@beta
-
-    n_bootstraps = 1
+    n_bootstraps = 50
     Y_predict = np.empty((X_test.shape[0], n_bootstraps))
     beta = np.empty((X_test.shape[1], n_bootstraps))
 
@@ -220,43 +214,45 @@ def solve(deg, N=34, noise_factor=0.15, debug_info=False, timing_info=False):
         if timing_info: print(f"solved for beta in {inversion_time:.3f} s")
 
         Y_predict[:, i] = X_test@beta[:, i]
+        # Y_tilde[:, i] = X_train@beta[:, i]    # Should this be included?
 
-    # y_tilde = X_train@(np.mean(beta, axis=1))
-    y_tilde = X_train@betaa
+    y_tilde = X_train@(np.mean(beta, axis=1))
+    # y_tilde = X_train@betaa # THIS IS UNANSWERED
     y_predict = np.mean(Y_predict, axis=1)
 
     r_score_train = r_squared(y_train, y_tilde)
     mse_train = mean_squared_error(y_train, y_tilde)
-    # bias_train = np.mean( (y_test - np.mean(y_predict))**2 )
-    
+    bias_train = bias(y_train, y_tilde)
+    variance_train = np.mean(np.var(Y_predict, axis=1))
     
     r_score_test = r_squared(y_test, y_predict)
     mse_test = mean_squared_error(y_test, y_predict)
+    bias_test = bias(y_test, y_predict)
 
     if debug_info:
-        print("\ntrain")
+        print("train")
         print(f"R^2: {r_score_train}")
         print(f"MSE: {mse_train}")
-        
-        print("train (sklearn)")
-        print(f"R^2: {skl.r2_score(y_train, y_tilde)}")
-        print(f"MSE: {skl.mean_squared_error(y_train, y_tilde)}")
+        print(f"bias: {bias_train}")
         
         print("\ntest")
         print(f"R^2: {r_score_test}")
         print(f"MSE: {mse_test}")
-        
-        print("test (sklearn)")
-        print(f"R^2: {skl.r2_score(y_test, y_predict)}")
-        print(f"MSE: {skl.mean_squared_error(y_test, y_predict)}")
+        print(f"bias: {bias_test}")
 
     return r_score_train, mse_train, r_score_test, mse_test
 
 
-def compare():
+def compare(which="mse"):
     """
     Call 'solve' with a range of polynomial degrees and plot the R score
-    and mean squared error as a function of the polynomial degree.
+    or mean squared error as a function of the polynomial degree.
+
+    Parameters
+    ----------
+    which : string
+        Choose whether to plot MSE or R score.  Allowed inputs are 'mse'
+        and 'r_score'.  Returns if any other argument is passed.
     """
     # np.random.seed(1337)
     degrees = np.arange(1, 30+1, 1)
@@ -273,19 +269,25 @@ def compare():
         r_score_train[i], mse_train[i], r_score_test[i], mse_test[i] = \
             solve(degrees[i], N, noise_factor, debug_info=False, timing_info=True)
 
-    # plt.plot(degrees, r_score_train, label="r_score_train")
-    plt.semilogy(degrees, mse_train, label="mse_train")
-    # plt.plot(degrees, r_score_test, label="r_score_test")
-    plt.semilogy(degrees, mse_test, label="mse_test")
+    if which == "mse":
+        plt.semilogy(degrees, mse_train, label="mse_train")
+        plt.semilogy(degrees, mse_test, label="mse_test")
+        plt.ylabel("MSE")
+
+    elif which == "r_score":
+        plt.plot(degrees, r_score_train, label="r_score_train")
+        plt.plot(degrees, r_score_test, label="r_score_test")
+    
+    else:
+        print("Please choose 'mse' or 'r_score'.")
+        return
+    
     plt.xlabel("ploynomial degree")
-    plt.ylabel("MSE")
     plt.legend()
     plt.show()
-
-
     
 
 if __name__ == "__main__":
     # np.random.seed(1337)
     # solve(deg=2, N=3, debug_info=True)
-    compare()
+    compare(which='mse')
