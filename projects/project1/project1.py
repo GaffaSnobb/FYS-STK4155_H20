@@ -34,6 +34,7 @@ def mean_squared_error(y_observed, y_predicted):
     # return np.sum((y_observed - y_predicted)**2)/len(y_observed)
     return np.mean((y_observed - y_predicted)**2)
 
+
 def bias(f, y):
     """
     Calculate the bias.
@@ -74,60 +75,12 @@ def r_squared(y_observed, y_predicted):
         np.sum((y_observed - np.mean(y_observed))**2)
 
 
-def create_design_matrix(x1, x2, N, deg):
-    """
-    Construct a design matrix with N**2 rows and features =
-    (deg + 1)*(deg + 2)/2 columns.  N**2 is the number of samples and
-    features is the number of features of the design matrix.
 
-    Parameters
-    ----------
-
-    x1 : numpy.ndarray
-        Dependent / outcome / response variable. Is it, though?
-
-    x2 : numpy.ndarray
-        Dependent / outcome / response variable. Is it, though?
-
-    N : int
-        The number of randomly drawn data ponts per variable.
-
-    deg : int
-        The polynomial degree.
-
-    Returns
-    -------
-    X : numpy.ndarray
-        Design matrix of dimensions N**2 rows and (deg + 1)*(deg + 2)/2
-        columns.
-    """
-
-    x1 = x1.ravel()
-    x2 = x2.ravel()
-    
-    features = int((deg + 1)*(deg + 2)/2)
-    X = np.empty((N**2, features))     # Data points x features.
-    X[:, 0] = 1 # Intercept.
-    col_idx = 1 # For indexing the design matrix columns.
-
-    for j in range(1, deg+1):
-        """
-        Loop over all degrees except 0.
-        """
-        for k in range(j+1):
-            """
-            Loop over all combinations of x1 and x2 which produces
-            an j'th degree term.
-            """
-            X[:, col_idx] = (x1**(j - k))*x2**k
-            col_idx += 1
-
-    return X
 
 
 class Solve:
-    def __init__(self, deg, N=34, noise_factor=0.15, debug_info=False,
-        timing_info=False):
+    def __init__(self, deg, N=34, noise_factor=0.15, draw_random=False,
+        debug_info=False, timing_info=False):
         """
         Solve the OLS on the Franke function.
 
@@ -136,10 +89,8 @@ class Solve:
         values.  Pass the meshgrids to the Franke function, ravel the
         resulting array for easier calculations and add stochastic noise
         drawn from the standard normal distribution. Create the design
-        matrix X based on the meshgrids, the number of randomly drawn points
-        and the polynomial degree.  Split the data into training and test
-        sets.  Scale the data by subtracting the mean and dividing by the
-        standard deviation.
+        matrix X based on the meshgrids, the number of data points and
+        the polynomial degree.
 
         Parameters
         ----------
@@ -153,6 +104,10 @@ class Solve:
         noise_factor : int, float
             The factor of added stochastic noise.
 
+        draw_random : boolean
+            If True, x1 and x2 values will be drawn from the standard
+            normal distribution.  If False, linspace is used.
+
         debug_info : boolean
             For toggling print of debug data on / off.
 
@@ -161,28 +116,89 @@ class Solve:
         """
         self.debug_info = debug_info
         self.timing_info = timing_info
-        # x1, x2 = np.meshgrid(np.random.randn(N), np.random.randn(N))
-        x1, x2 = np.meshgrid(np.linspace(0, 1, N), np.linspace(0, 1, N))
 
-        y_observed = franke_function(x1, x2).ravel()
-        y_observed += noise_factor*np.random.randn(N**2) # Stochastic noise.
+        if draw_random:
+            x1, x2 = np.meshgrid(np.random.randn(N), np.random.randn(N))
+        else:
+            x1, x2 = np.meshgrid(np.linspace(0, 1, N), np.linspace(0, 1, N))
+
+        self.y_observed = franke_function(x1, x2).ravel()
+        self.y_observed += noise_factor*np.random.randn(N**2) # Stochastic noise.
         
         create_time = time.time()
-        X = create_design_matrix(x1, x2, N, deg)
+        self.X = self._create_design_matrix(x1, x2, N, deg)
         create_time = time.time() - create_time
 
         if self.timing_info:
             print(f"design matrix created in {create_time:.3f} s")
-            print(f"design matrix dimensions {X.shape}")
-        
+            print(f"design matrix dimensions {self.X.shape}")
+
+
+    def _split_scale(self):
+        """
+        Split the data into training and test sets.  Scale the data by
+        subtracting the mean and dividing by the standard deviation,
+        both values from the training set.
+        """
         self.X_train, self.X_test, self.y_train, self.y_test = \
-            train_test_split(X, y_observed, test_size=0.2)
+            train_test_split(self.X, self.y_observed, test_size=0.2)
 
         # Scaling.
         X_mean = np.mean(self.X_train)
         X_std = np.std(self.X_train)
         self.X_train = (self.X_train - X_mean)/X_std
         self.X_test = (self.X_test - X_mean)/X_std
+
+
+    def _create_design_matrix(self, x1, x2, N, deg):
+        """
+        Construct a design matrix with N**2 rows and features =
+        (deg + 1)*(deg + 2)/2 columns.  N**2 is the number of samples and
+        features is the number of features of the design matrix.
+
+        Parameters
+        ----------
+
+        x1 : numpy.ndarray
+            Dependent / outcome / response variable. Is it, though?
+
+        x2 : numpy.ndarray
+            Dependent / outcome / response variable. Is it, though?
+
+        N : int
+            The number of randomly drawn data ponts per variable.
+
+        deg : int
+            The polynomial degree.
+
+        Returns
+        -------
+        X : numpy.ndarray
+            Design matrix of dimensions N**2 rows and (deg + 1)*(deg + 2)/2
+            columns.
+        """
+
+        x1 = x1.ravel()
+        x2 = x2.ravel()
+        
+        self.features = int((deg + 1)*(deg + 2)/2)
+        X = np.empty((N**2, self.features))     # Data points x features.
+        X[:, 0] = 1 # Intercept.
+        col_idx = 1 # For indexing the design matrix columns.
+
+        for j in range(1, deg+1):
+            """
+            Loop over all degrees except 0.
+            """
+            for k in range(j+1):
+                """
+                Loop over all combinations of x1 and x2 which produces
+                an j'th degree term.
+                """
+                X[:, col_idx] = (x1**(j - k))*x2**k
+                col_idx += 1
+
+        return X
 
 
     def bootstrap(self, n_bootstraps=50):
@@ -202,10 +218,15 @@ class Solve:
         mse_train : float
             The mean squared error of the training set.
         """
+        self._split_scale()
         Y_predict = np.empty((self.X_test.shape[0], n_bootstraps))
-        beta = np.empty((self.X_test.shape[1], n_bootstraps))
+        beta = np.empty((self.X_test.shape[1], n_bootstraps))   # May not be necessary to store all betas.
 
         for b in range(n_bootstraps):
+            """
+            Draw n_bootstrap bootstrap resamples and calculate predicted
+            y values based on every resample.
+            """
             X_train_resample, y_train_resample = resample(self.X_train,
                 self.y_train, replace=True)
 
@@ -219,7 +240,7 @@ class Solve:
 
             Y_predict[:, b] = self.X_test@beta[:, b]
         
-        y_predict = np.mean(Y_predict, axis=1)
+        y_predict = np.mean(Y_predict, axis=1)  # Average over all columns.
         
         r_score_test = r_squared(self.y_test, y_predict)
         # mse_test = mean_squared_error(self.y_test, y_predict)
@@ -261,7 +282,7 @@ class Solve:
         mse_test : float
             The mean squared error of the test set.
         """
-        
+        self._split_scale()
         inversion_time = time.time()
         beta = np.linalg.pinv(self.X_train.T@self.X_train)@self.X_train.T@self.y_train
         inversion_time = time.time() - inversion_time
@@ -296,8 +317,57 @@ class Solve:
         return r_score_train, mse_train, r_score_test, mse_test
 
 
-class Compare:
+    def cross_validation(self, k):
+        """
+        Perform the OLS with k-fold cross validation.
 
+        Parameters
+        ----------
+        k : int
+            The number of folds.
+        """
+        # print(self.X.shape)
+        sample_length = self.X.shape[0]//k
+        print(f"\nsample length: {sample_length}")
+        print(f"true sample length: {self.X.shape[0]/k}")
+        np.random.shuffle(self.X)   # In-place shuffle the rows.
+        X_sample_train = np.empty((self.X.shape[0]-sample_length, self.features))
+        X_sample_validation = np.empty((sample_length, self.features))
+        
+        print(f"\nX_sample_train dim: {X_sample_train.shape}")
+        print(f"X_sample_validation dim: {X_sample_validation.shape}")
+        
+        for i in range(k):
+            # print(i*sample_length, (i + 1)*sample_length)
+            validation_start = i*sample_length
+            validation_stop = (i + 1)*sample_length
+            X_sample_validation[:, :] = self.X[validation_start:validation_stop]
+            
+            stop_p1 = validation_start
+            print(f"\ni = {i}")
+            if i > 0:
+                """
+                Validation subsample is not located at the beginning of
+                X.
+                """
+                print("i > 0")
+                print(f"\t[0:{validation_start}] len = {validation_start}")
+                X_sample_train[0:validation_start] = self.X[0:validation_start]
+
+            if i < (k-1):
+                """
+                Validation subsample is not located at the end of X.
+                """
+                print("i < (k-1)")
+                print(f"\t[{validation_start}:{X_sample_train.shape[0]}] len = {X_sample_train.shape[0] - validation_start}")
+                print(f"\t[{validation_stop}:{self.X.shape[0]}] len = {self.X.shape[0] - validation_stop}")
+                X_sample_train[validation_start:] = self.X[validation_stop:]
+                
+
+
+        
+
+class Compare:
     def __init__(self, max_degree, N, noise_factor):
         self.degrees = np.arange(1, max_degree+1, 1)
         self.N_degrees = len(self.degrees)
@@ -314,7 +384,7 @@ class Compare:
         ----------
         which : string
             Choose whether to plot MSE or R score.  Allowed inputs are 'mse'
-            and 'r_score'.  Returns if any other argument is passed.
+            and 'r_score'.  Returns None if any other argument is passed.
         """
 
         r_score_train = np.empty(self.N_degrees)
@@ -349,7 +419,8 @@ class Compare:
 
     def compare_bootstrap(self, n_bootstraps):
         """
-
+        Compare MSE, variance and bias as a function of polynomial
+        degree.
         """
         r_score = np.empty(self.N_degrees)
         mse = np.empty(self.N_degrees)
@@ -368,10 +439,17 @@ class Compare:
         # plt.plot(self.degrees, variance+bias, label="var+bias")
         plt.legend()
         plt.show()
+
+    def compare_cross_validation(self, k):
+        q = Solve(deg=self.degrees[-1], N=self.N, noise_factor=self.noise_factor,
+            draw_random=False, debug_info=False, timing_info=True)
+
+        q.cross_validation(k)
         
 
 if __name__ == "__main__":
-    # np.random.seed(1337)
-    q = Compare(max_degree=15, N=20, noise_factor=0.1)
+    np.random.seed(1337)
+    q = Compare(max_degree=2, N=4, noise_factor=0.1)
     # q.compare_no_bootstrap(which='mse')
-    q.compare_bootstrap(n_bootstraps=20)
+    # q.compare_bootstrap(n_bootstraps=20)
+    q.compare_cross_validation(k=3)
