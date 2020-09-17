@@ -24,7 +24,7 @@ def mean_squared_error(y_observed, y_predicted):
         Observed values.
 
     y_predicted : numpy.ndarray, float
-        Predicted values.
+        predicted values.
 
     Returns
     -------
@@ -64,7 +64,7 @@ def r_squared(y_observed, y_predicted):
         Observed values.
 
     y_predicted : numpy.ndarray
-        Predicted values.
+        predicted values.
 
     Returns
     -------
@@ -132,6 +132,8 @@ class Solve:
         if self.timing_info:
             print(f"design matrix created in {create_time:.3f} s")
             print(f"design matrix dimensions {self.X.shape}")
+
+        self._split_scale()
 
 
     def _split_scale(self):
@@ -218,8 +220,7 @@ class Solve:
         mse_train : float
             The mean squared error of the training set.
         """
-        self._split_scale()
-        Y_predict = np.empty((self.X_test.shape[0], n_bootstraps))
+        Y_predicted = np.empty((self.X_test.shape[0], n_bootstraps))
         beta = np.empty((self.X_test.shape[1], n_bootstraps))   # May not be necessary to store all betas.
 
         for b in range(n_bootstraps):
@@ -238,17 +239,17 @@ class Solve:
             if self.timing_info:
                 print(f"solved for beta in {inversion_time:.3f} s")
 
-            Y_predict[:, b] = self.X_test@beta[:, b]
+            Y_predicted[:, b] = self.X_test@beta[:, b]
         
-        y_predict = np.mean(Y_predict, axis=1)  # Average over all columns.
+        y_predicted = np.mean(Y_predicted, axis=1)  # Average over all columns.
         
-        r_score_test = r_squared(self.y_test, y_predict)
-        # mse_test = mean_squared_error(self.y_test, y_predict)
-        mse_test = np.mean( np.mean((self.y_test.reshape(-1, 1) - Y_predict)**2, axis=1) )
-        # bias_test = bias(self.y_test, y_predict)
+        r_score_test = r_squared(self.y_test, y_predicted)
+        # mse_test = mean_squared_error(self.y_test, y_predicted)
+        mse_test = np.mean((self.y_test.reshape(-1, 1) - Y_predicted)**2)
+        # bias_test = bias(self.y_test, y_predicted)
         
-        bias_test = np.mean( (self.y_test - np.mean(Y_predict, axis=1))**2 )
-        variance = np.mean(np.var(Y_predict, axis=1))
+        bias_test = np.mean( (self.y_test - np.mean(Y_predicted, axis=1))**2 )
+        variance = np.mean(np.var(Y_predicted, axis=1))
 
         if self.debug_info:
             print("train")
@@ -265,7 +266,7 @@ class Solve:
 
         Solve for the vector beta by matrix inversion and matrix
         multiplication.  Use the beta vector to generate model data
-        (y_tilde) and predicted data (y_predict). Return the R^2 score
+        (y_tilde) and predicted data (y_predicted). Return the R^2 score
         and MSE for both training and test data sets.
 
         Returns
@@ -282,7 +283,6 @@ class Solve:
         mse_test : float
             The mean squared error of the test set.
         """
-        self._split_scale()
         inversion_time = time.time()
         beta = np.linalg.pinv(self.X_train.T@self.X_train)@self.X_train.T@self.y_train
         inversion_time = time.time() - inversion_time
@@ -290,12 +290,12 @@ class Solve:
             print(f"solved for beta in {inversion_time:.3f} s")
 
         y_tilde = self.X_train@beta
-        y_predict = self.X_test@beta
+        y_predicted = self.X_test@beta
 
         r_score_train = r_squared(self.y_train, y_tilde)
         mse_train = mean_squared_error(self.y_train, y_tilde)
-        r_score_test = r_squared(self.y_test, y_predict)
-        mse_test = mean_squared_error(self.y_test, y_predict)
+        r_score_test = r_squared(self.y_test, y_predicted)
+        mse_test = mean_squared_error(self.y_test, y_predicted)
 
         if self.debug_info:
             print("\ntrain")
@@ -311,13 +311,13 @@ class Solve:
             print(f"MSE: {mse_test}")
             
             print("test (sklearn)")
-            print(f"R^2: {skl.r2_score(y_test, y_predict)}")
-            print(f"MSE: {skl.mean_squared_error(y_test, y_predict)}")
+            print(f"R^2: {skl.r2_score(y_test, y_predicted)}")
+            print(f"MSE: {skl.mean_squared_error(y_test, y_predicted)}")
 
         return r_score_train, mse_train, r_score_test, mse_test
 
 
-    def cross_validation(self, k):
+    def cross_validation(self, k, lots_of_info=False):
         """
         Perform the OLS with k-fold cross validation.
 
@@ -325,62 +325,82 @@ class Solve:
         ----------
         k : int
             The number of folds.
+
+        lots_of_info : boolean
+            Toggle print of a bunch of debug info on / off.  Remove
+            before final delivery.
         """
-        # print(self.X.shape)
-        sample_length = self.X.shape[0]//k
-        rest = self.X.shape[0]%k
-        total_data_points = self.X.shape[0] - rest
-        print(f"rest: {rest}")
+        sample_length = self.X_train.shape[0]//k
+        rest = self.X_train.shape[0]%k
+        total_data_points = self.X_train.shape[0] - rest  # Removes 'rest' amount of trailing data points.
         
-        print(f"\nsample length: {sample_length}")
-        print(f"true sample length: {self.X.shape[0]/k}")
-        
-        np.random.shuffle(self.X)   # In-place shuffle the rows.
-        # X_sample_train = np.empty((total_data_points-sample_length, self.features))
-        # X_sample_validation = np.empty((sample_length, self.features))
-        
-        # print(f"\nX_sample_train dim: {X_sample_train.shape}")
-        # print(f"X_sample_validation dim: {X_sample_validation.shape}")
+        # np.random.shuffle(self.X)   # In-place shuffle the rows.
+        X_train_sample = np.empty((total_data_points-sample_length, self.features))
+        X_validation_sample = np.empty((sample_length, self.features))
+        y_train_sample = np.empty(total_data_points-sample_length)
+        Y_predicted = np.empty((sample_length, k))
+
+        if lots_of_info:
+            print(f"rest: {rest}")
+            print(f"\nsample length: {sample_length}")
+            print(f"true sample length: {self.X_train.shape[0]/k}")
+            print(f"\nX_train_sample dim: {X_train_sample.shape}")
+            print(f"X_validation_sample dim: {X_validation_sample.shape}")
         
         for i in range(k):
-            X_sample_train = np.full(shape=(total_data_points-sample_length, self.features), fill_value=666)
-            X_sample_validation = np.full(shape=(sample_length, self.features), fill_value=666)
-            # print(i*sample_length, (i + 1)*sample_length)
-            print(f"\ni = {i}")
+            """
+            Loop over the number of folds.
+            """
             validation_start = i*sample_length
             validation_stop = (i + 1)*sample_length
-            print(f"validation: [{validation_start}:{validation_stop}]")
-            X_sample_validation[:, :] = self.X[validation_start:validation_stop]
+            X_validation_sample[:, :] = self.X_train[validation_start:validation_stop]
+
+            if lots_of_info:
+                print(f"\ni = {i}")
+                print(f"validation: [{validation_start}:{validation_stop}]")
             
             if i > 0:
                 """
                 Validation subsample is not located at the beginning of
                 X.
                 """
-                print("i > 0")
-                print(f"\t[0:{validation_start}] len = {validation_start}")
-                X_sample_train[0:validation_start] = self.X[0:validation_start]
+                if lots_of_info:
+                    print("i > 0")
+                    print(f"\t[0:{validation_start}] len = {validation_start}")
+                
+                y_train_sample[0:validation_start] = self.y_train[0:validation_start]
+                X_train_sample[0:validation_start] = self.X_train[0:validation_start]
 
             if i < (k-1):
                 """
                 Validation subsample is not located at the end of X.
                 """
-                print("i < (k-1)")
-                print(f"\t[{validation_start}:{X_sample_train.shape[0]}] len = {X_sample_train.shape[0] - validation_start}")
-                print(f"\t[{validation_stop}:{self.X.shape[0]}] len = {self.X.shape[0] - validation_stop}")
-                X_sample_train[validation_start:] = self.X[validation_stop:total_data_points]
-            else:
-                """
-                Validation subsample is now located at the end of X.
-                Make sure that the last N**2%k data points are included,
-                if any.
-                """
+                if lots_of_info:
+                    print("i < (k-1)")
+                    print(f"\t[{validation_start}:{X_train_sample.shape[0]}] len = {X_train_sample.shape[0] - validation_start}")
+                    print(f"\t[{validation_stop}:{self.X_train.shape[0]}] len = {self.X_train.shape[0] - validation_stop}")
                 
+                y_train_sample[validation_start:] = self.y_train[validation_stop:total_data_points]
+                X_train_sample[validation_start:] = self.X_train[validation_stop:total_data_points]
 
-            print()
-            print(X_sample_train)
-            print(X_sample_validation)
-            print()
+
+            inversion_time = time.time()
+            beta = np.linalg.pinv(X_train_sample.T@X_train_sample)@X_train_sample.T@y_train_sample
+            inversion_time = time.time() - inversion_time
+            if self.timing_info:
+                print(f"solved for beta in {inversion_time:.3f} s")
+
+            Y_predicted[:, i] = X_validation_sample@beta
+                
+            if lots_of_info:
+                print()
+                print(X_train_sample)
+                print(X_validation_sample)
+                print()
+        print(f"X_validation_sample: {X_validation_sample.shape}")
+        print(f"beta: {beta.shape}")
+        print(self.y_test.reshape(-1, 1).shape, Y_predicted.shape)
+        return mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
                 
 
 
@@ -459,6 +479,7 @@ class Compare:
         plt.legend()
         plt.show()
 
+
     def compare_cross_validation(self, k):
         q = Solve(deg=self.degrees[-1], N=self.N, noise_factor=self.noise_factor,
             draw_random=False, debug_info=False, timing_info=True)
@@ -468,7 +489,7 @@ class Compare:
 
 if __name__ == "__main__":
     np.random.seed(1337)
-    q = Compare(max_degree=2, N=4, noise_factor=0.1)
+    q = Compare(max_degree=20, N=40, noise_factor=0.1)
     # q.compare_no_bootstrap(which='mse')
     # q.compare_bootstrap(n_bootstraps=20)
     q.compare_cross_validation(k=3)
