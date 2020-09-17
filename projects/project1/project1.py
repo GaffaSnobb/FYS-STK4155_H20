@@ -328,23 +328,30 @@ class Solve:
         """
         # print(self.X.shape)
         sample_length = self.X.shape[0]//k
+        rest = self.X.shape[0]%k
+        total_data_points = self.X.shape[0] - rest
+        print(f"rest: {rest}")
+        
         print(f"\nsample length: {sample_length}")
         print(f"true sample length: {self.X.shape[0]/k}")
-        np.random.shuffle(self.X)   # In-place shuffle the rows.
-        X_sample_train = np.empty((self.X.shape[0]-sample_length, self.features))
-        X_sample_validation = np.empty((sample_length, self.features))
         
-        print(f"\nX_sample_train dim: {X_sample_train.shape}")
-        print(f"X_sample_validation dim: {X_sample_validation.shape}")
+        np.random.shuffle(self.X)   # In-place shuffle the rows.
+        # X_sample_train = np.empty((total_data_points-sample_length, self.features))
+        # X_sample_validation = np.empty((sample_length, self.features))
+        
+        # print(f"\nX_sample_train dim: {X_sample_train.shape}")
+        # print(f"X_sample_validation dim: {X_sample_validation.shape}")
         
         for i in range(k):
+            X_sample_train = np.full(shape=(total_data_points-sample_length, self.features), fill_value=666)
+            X_sample_validation = np.full(shape=(sample_length, self.features), fill_value=666)
             # print(i*sample_length, (i + 1)*sample_length)
+            print(f"\ni = {i}")
             validation_start = i*sample_length
             validation_stop = (i + 1)*sample_length
+            print(f"validation: [{validation_start}:{validation_stop}]")
             X_sample_validation[:, :] = self.X[validation_start:validation_stop]
             
-            stop_p1 = validation_start
-            print(f"\ni = {i}")
             if i > 0:
                 """
                 Validation subsample is not located at the beginning of
@@ -361,7 +368,19 @@ class Solve:
                 print("i < (k-1)")
                 print(f"\t[{validation_start}:{X_sample_train.shape[0]}] len = {X_sample_train.shape[0] - validation_start}")
                 print(f"\t[{validation_stop}:{self.X.shape[0]}] len = {self.X.shape[0] - validation_stop}")
-                X_sample_train[validation_start:] = self.X[validation_stop:]
+                X_sample_train[validation_start:] = self.X[validation_stop:total_data_points]
+            else:
+                """
+                Validation subsample is now located at the end of X.
+                Make sure that the last N**2%k data points are included,
+                if any.
+                """
+                
+
+            print()
+            print(X_sample_train)
+            print(X_sample_validation)
+            print()
                 
 
 
