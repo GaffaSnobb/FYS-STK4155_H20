@@ -1,8 +1,10 @@
 import time
+import psutil
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
+
 
 def franke_function(x1, x2):
     return 0.75*np.exp(-(0.25*(9*x1 - 2)**2) - 0.25*((9*x2 - 2)**2)) \
@@ -75,9 +77,6 @@ def r_squared(y_observed, y_predicted):
         np.sum((y_observed - np.mean(y_observed))**2)
 
 
-
-
-
 class Solve:
     def __init__(self, deg, N=34, noise_factor=0.15, draw_random=False,
         debug_info=False, timing_info=False):
@@ -116,6 +115,7 @@ class Solve:
         """
         self.debug_info = debug_info
         self.timing_info = timing_info
+        self.split_scale_called = False
 
         if draw_random:
             x1, x2 = np.meshgrid(np.random.randn(N), np.random.randn(N))
@@ -142,6 +142,7 @@ class Solve:
         subtracting the mean and dividing by the standard deviation,
         both values from the training set.
         """
+        # Splitting.
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y_observed, test_size=0.2)
 
@@ -150,6 +151,8 @@ class Solve:
         X_std = np.std(self.X_train)
         self.X_train = (self.X_train - X_mean)/X_std
         self.X_test = (self.X_test - X_mean)/X_std
+
+        self.split_scale_called = True
 
 
     def _create_design_matrix(self, x1, x2, N, deg):
@@ -289,12 +292,12 @@ class Solve:
         if self.timing_info:
             print(f"solved for beta in {inversion_time:.3f} s")
 
-        y_tilde = self.X_train@beta
+        y_tilde = self.X_train@beta     # Model.
         y_predicted = self.X_test@beta
 
         r_score_train = r_squared(self.y_train, y_tilde)
-        mse_train = mean_squared_error(self.y_train, y_tilde)
         r_score_test = r_squared(self.y_test, y_predicted)
+        mse_train = mean_squared_error(self.y_train, y_tilde)
         mse_test = mean_squared_error(self.y_test, y_predicted)
 
         if self.debug_info:
@@ -317,43 +320,50 @@ class Solve:
         return r_score_train, mse_train, r_score_test, mse_test
 
 
-    def cross_validation(self, k, lots_of_info=False):
+    def cross_validation(self, folds, lots_of_info=False):
         """
         Perform the OLS with k-fold cross validation.
 
         Parameters
         ----------
-        k : int
+        folds : int
             The number of folds.
 
         lots_of_info : boolean
             Toggle print of a bunch of debug info on / off.  Remove
             before final delivery.
         """
-        sample_length = self.X_train.shape[0]//k
-        rest = self.X_train.shape[0]%k
+        sample_length = self.X_train.shape[0]//folds
+        rest = self.X_train.shape[0]%folds
         total_data_points = self.X_train.shape[0] - rest  # Removes 'rest' amount of trailing data points.
         
         # np.random.shuffle(self.X)   # In-place shuffle the rows.
         X_train_sample = np.empty((total_data_points-sample_length, self.features))
         X_validation_sample = np.empty((sample_length, self.features))
+        
         y_train_sample = np.empty(total_data_points-sample_length)
-        Y_predicted = np.empty((sample_length, k))
+        Y_validation_sample = np.empty((sample_length, folds))
+        Y_predicted = np.empty((sample_length, folds))  # Predictions without the 'holy' test set.
+        
+        self.beta_cv = np.empty((self.features, folds))
 
         if lots_of_info:
             print(f"rest: {rest}")
             print(f"\nsample length: {sample_length}")
-            print(f"true sample length: {self.X_train.shape[0]/k}")
+            print(f"true sample length: {self.X_train.shape[0]/folds}")
             print(f"\nX_train_sample dim: {X_train_sample.shape}")
             print(f"X_validation_sample dim: {X_validation_sample.shape}")
         
-        for i in range(k):
+        for i in range(folds):
             """
-            Loop over the number of folds.
+            Split the training data into equally sized portions.
             """
             validation_start = i*sample_length
             validation_stop = (i + 1)*sample_length
-            X_validation_sample[:, :] = self.X_train[validation_start:validation_stop]
+            X_validation_sample[:, :] = \
+                self.X_train[validation_start:validation_stop]
+            Y_validation_sample[:, i] = \
+                self.y_train[validation_start:validation_stop]
 
             if lots_of_info:
                 print(f"\ni = {i}")
@@ -368,53 +378,76 @@ class Solve:
                     print("i > 0")
                     print(f"\t[0:{validation_start}] len = {validation_start}")
                 
-                y_train_sample[0:validation_start] = self.y_train[0:validation_start]
-                X_train_sample[0:validation_start] = self.X_train[0:validation_start]
+                y_train_sample[0:validation_start] = \
+                    self.y_train[0:validation_start]
+                X_train_sample[0:validation_start] = \
+                    self.X_train[0:validation_start]
 
-            if i < (k-1):
+            if i < (folds-1):
                 """
                 Validation subsample is not located at the end of X.
                 """
                 if lots_of_info:
-                    print("i < (k-1)")
+                    print("i < (folds-1)")
                     print(f"\t[{validation_start}:{X_train_sample.shape[0]}] len = {X_train_sample.shape[0] - validation_start}")
                     print(f"\t[{validation_stop}:{self.X_train.shape[0]}] len = {self.X_train.shape[0] - validation_stop}")
                 
-                y_train_sample[validation_start:] = self.y_train[validation_stop:total_data_points]
-                X_train_sample[validation_start:] = self.X_train[validation_stop:total_data_points]
+                y_train_sample[validation_start:] = \
+                    self.y_train[validation_stop:total_data_points]
+                X_train_sample[validation_start:] = \
+                    self.X_train[validation_stop:total_data_points]
 
 
             inversion_time = time.time()
-            beta = np.linalg.pinv(X_train_sample.T@X_train_sample)@X_train_sample.T@y_train_sample
+            self.beta_cv[:, i] = np.linalg.pinv(X_train_sample.T@X_train_sample)@X_train_sample.T@y_train_sample
             inversion_time = time.time() - inversion_time
             if self.timing_info:
                 print(f"solved for beta in {inversion_time:.3f} s")
 
-            Y_predicted[:, i] = X_validation_sample@beta
+            Y_predicted[:, i] = X_validation_sample@self.beta_cv[:, i]
                 
             if lots_of_info:
                 print()
                 print(X_train_sample)
                 print(X_validation_sample)
                 print()
-        print(f"X_validation_sample: {X_validation_sample.shape}")
-        print(f"beta: {beta.shape}")
-        print(self.y_test.reshape(-1, 1).shape, Y_predicted.shape)
-        return mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
-                
-
-
         
+        print(f"X_validation_sample: {X_validation_sample.shape}")
+        print(f"beta: {self.beta_cv.shape}")
+        print("LOL", Y_validation_sample.shape, Y_predicted.shape)
+
+        self.beta_cv = np.mean(self.beta_cv, axis=1)
+
+        y_predicted = self.X_test@self.beta_cv  # Predictions based on the 'holy' test set.
+        mse_train = mean_squared_error(Y_validation_sample, Y_predicted)
+        mse_test = mean_squared_error(self.y_test, y_predicted)
+
+        return mse_train, mse_test
+
 
 class Compare:
     def __init__(self, max_degree, N, noise_factor):
+        """
+        Parameters
+        ----------
+        max_degree : int
+            Max polynomial degree.
+
+        N : int
+            N**2 is the number of data points.
+
+        noise_factor : float, int
+            How much noise to add.
+        """
         self.degrees = np.arange(1, max_degree+1, 1)
         self.N_degrees = len(self.degrees)
-        self.N = N  # The number of rows in X is N**2.
+        self.N = N
         self.noise_factor = noise_factor
 
+        self.fig, self.ax = plt.subplots(figsize=(10, 8))
 
-    def compare_no_bootstrap(self, which="mse"):
+
+    def compare_no_bootstrap(self, which="mse", show_plot=True):
         """
         Use 'Solve' with a range of polynomial degrees and plot the R score
         or mean squared error as a function of the polynomial degree.
@@ -439,24 +472,38 @@ class Compare:
 
 
         if which == "mse":
-            plt.semilogy(self.degrees, mse_train, label="mse_train")
-            plt.semilogy(self.degrees, mse_test, label="mse_test")
-            plt.ylabel("MSE")
+            self.ax.semilogy(self.degrees, mse_train, label="mse_train")
+            self.ax.semilogy(self.degrees, mse_test, label="mse_test")
 
         elif which == "r_score":
-            plt.plot(self.degrees, r_score_train, label="r_score_train")
-            plt.plot(self.degrees, r_score_test, label="r_score_test")
+            self.ax.plot(self.degrees, r_score_train, label="r_score_train")
+            self.ax.plot(self.degrees, r_score_test, label="r_score_test")
         
         else:
             print("Please choose 'mse' or 'r_score'.")
             return
         
-        plt.xlabel("ploynomial degree")
-        plt.legend()
-        plt.show()
+        self._label_legend_title()
+        if show_plot: plt.show()
 
 
-    def compare_bootstrap(self, n_bootstraps):
+    def compare_bootstrap(self, n_bootstraps, show_plot=True):
+        """
+        Compare MSE as a function of polynomial degree.
+        """
+        mse = np.empty(self.N_degrees)
+        
+        for i in range(self.N_degrees):
+            q = Solve(self.degrees[i], self.N, self.noise_factor,
+                debug_info=False, timing_info=True)
+            _, mse[i], _, _ = q.bootstrap(n_bootstraps)
+
+        self.ax.plot(self.degrees, mse, label=f"{n_bootstraps} bootstraps")
+        self._label_legend_title()
+        if show_plot: plt.show()
+
+
+    def compare_bootstrap_bias_variance(self, n_bootstraps, show_plot=True):
         """
         Compare MSE, variance and bias as a function of polynomial
         degree.
@@ -472,24 +519,62 @@ class Compare:
             r_score[i], mse[i], bias[i], variance[i] =\
                 q.bootstrap(n_bootstraps)
 
-        plt.semilogy(self.degrees, variance, label="variance")
-        plt.semilogy(self.degrees, bias, label="bias")
-        plt.semilogy(self.degrees, mse, label="mse")
-        # plt.plot(self.degrees, variance+bias, label="var+bias")
-        plt.legend()
-        plt.show()
+        self.ax.semilogy(self.degrees, variance, label="variance")
+        self.ax.semilogy(self.degrees, bias, label="bias")
+        self.ax.semilogy(self.degrees, mse, label="mse")
+        # self.ax.plot(self.degrees, variance+bias, label="var+bias")
+        self._label_legend_title()
+        if show_plot: plt.show()
 
 
-    def compare_cross_validation(self, k):
-        q = Solve(deg=self.degrees[-1], N=self.N, noise_factor=self.noise_factor,
-            draw_random=False, debug_info=False, timing_info=True)
+    def compare_cross_validation(self, folds=5, show_plot=True):
+        mse_train = np.empty(self.N_degrees)
+        mse_test = np.empty(self.N_degrees)
+        
+        for i in range(self.N_degrees):
+            q = Solve(self.degrees[i], self.N, self.noise_factor,
+                debug_info=False, timing_info=True)
 
-        q.cross_validation(k)
+            mse_train[i], mse_test[i] = q.cross_validation(folds=folds)
+
+
+        self.ax.plot(self.degrees, mse_test, label=f"{folds}-fold CV test")
+        self.ax.plot(self.degrees, mse_train, label=f"{folds}-fold CV train")
+        self._label_legend_title()
+        if show_plot: plt.show()
+
+
+    def _label_legend_title(self):
+        self.ax.set_title("LOL")
+        self.ax.set_xlabel("Polynomial degree")
+        self.ax.set_ylabel("MSE")
+        self.ax.legend()
+
+
+    def compare_cross_validation_folds(self, folds, show_plot=True):
+
+        mse = []
+        
+        for k in folds:
+            q = Solve(deg=self.degrees[-1], N=self.N, noise_factor=self.noise_factor,
+                draw_random=False, debug_info=False, timing_info=True)
+
+            mse.append(q.cross_validation(folds=k))
+
+        print(mse)
+
+        self.ax.semilogy(folds, mse)
+        self._label_legend_title()
+        if show_plot: plt.show()
         
 
 if __name__ == "__main__":
-    np.random.seed(1337)
-    q = Compare(max_degree=20, N=40, noise_factor=0.1)
+    # np.random.seed(1337)
+    q = Compare(max_degree=30, N=40, noise_factor=0.1)
     # q.compare_no_bootstrap(which='mse')
-    # q.compare_bootstrap(n_bootstraps=20)
-    q.compare_cross_validation(k=3)
+    # q.compare_bootstrap(n_bootstraps=20, show_plot=False)
+    q.compare_cross_validation(show_plot=True)
+    # q.compare_bootstrap_bias_variance(n_bootstraps=20)
+    # q.compare_cross_validation_folds(folds=range(1, 15+1))
+    process = psutil.Process()
+    print(f"mem. usage: {process.memory_info().rss/1e6:.1f}MB")
