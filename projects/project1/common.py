@@ -113,6 +113,30 @@ def features(degree):
     return int((degree + 1)*(degree + 2)/2)
 
 
+def ols(X, y, lambd=0):
+    """
+    Solve for beta using OLS. beta = ((X^TX)^-1)X^Ty.
+
+    Parameters
+    ----------
+    X : numpy.ndarray
+        2D array of X.
+
+    y : numpy.ndarray
+        1D array of y.
+
+    lambd : float
+        Ridge regression parameter.  Defaults to 0 which means no ridge
+        regression.
+
+    Returns
+    -------
+    beta : numpy.ndarray
+        OLS solution.
+    """
+    return np.linalg.pinv(X.T@X + lambd*np.identity(X.shape[1]))@X.T@y
+
+
 class Regression:
     def __init__(self, n_data_points, noise_factor, max_poly_degree):
         """
@@ -180,7 +204,7 @@ class Regression:
             X_validation = X_split.pop(i)
             X_training = np.concatenate(X_split)
 
-            beta = np.linalg.pinv(X_training.T@X_training)@X_training.T@y_training
+            beta = ols(X_training, y_training)
             y_predicted = X_validation@beta
             mse += mean_squared_error(y_predicted, y_validation)
 
@@ -218,7 +242,7 @@ class Regression:
         X_train = self.X_train[:, :features(degree)] # Slice the correct number of features.
         X_test = self.X_test[:, :features(degree)] # Slice the correct number of features.
         
-        beta = np.linalg.pinv(X_train.T@X_train)@X_train.T@self.y_train
+        beta = ols(X_train, self.y_train)
         y_model = X_train@beta
         y_predicted = X_test@beta
 
@@ -274,7 +298,7 @@ class Regression:
             predicted y values based on every resample.
             """
             X_resample, y_resample = resample(X_train, self.y_train)
-            beta = np.linalg.pinv(X_resample.T@X_resample)@X_resample.T@y_resample
+            beta = ols(X_resample, y_resample)
 
             Y_predicted[:, b] = X_test@beta
 
