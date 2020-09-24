@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.utils import resample
 
 def create_design_matrix(x1, x2, N, degree):
     """
@@ -228,6 +229,60 @@ class Regression:
 
         return r_score_train, mse_train, r_score_test, mse_test
         
+
+    def bootstrap(self, degree, n_bootstraps):
+        """
+        Perform the OLS with bootstrapping.
+
+        Parameters
+        ----------
+        degree : int
+            Ploynomial degree.  The design matrix will be sliced
+            according to 'degree' to keep the correct number of
+            features (columns).
+
+        n_bootstraps : int
+            The number of bootstrap samples.
+
+        Returns
+        -------
+        mse_boot : float
+            The mean squared error of the test set.
+        
+        variance_boot : float
+            The variance.
+
+        bias_boot : float
+            The bias.
+        
+        """
+        self._split_scale()
+        
+        # For slicing the correct number of features.
+        n_features = features(degree)
+        X_train = self.X_train[:, :n_features]
+        X_test = self.X_test[:, :n_features]
+
+        # Keep all the predictions for later calculations.
+        n_test_data_points = self.X_test.shape[0]
+        Y_predicted = np.empty((n_test_data_points, n_bootstraps))
+
+
+        for b in range(n_bootstraps):
+            """
+            Draw 'n_bootstrap' bootstrap resamples and calculate
+            predicted y values based on every resample.
+            """
+            X_resample, y_resample = resample(X_train, self.y_train)
+            beta = np.linalg.pinv(X_resample.T@X_resample)@X_resample.T@y_resample
+
+            Y_predicted[:, b] = X_test@beta
+
+        mse_boot = mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
+        variance_boot = np.mean(np.var(Y_predicted, axis=1))
+        bias_boot = np.mean((self.y_test - np.mean(Y_predicted, axis=1))**2)
+
+        return mse_boot, variance_boot, bias_boot
 
 
     def _split_scale(self):
