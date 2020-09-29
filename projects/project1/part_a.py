@@ -7,7 +7,7 @@ if __name__ == "__main__":
     max_poly_degree = 20
     noise_factor = 0.2
     folds = 5
-    repetitions = 20
+    repetitions = 20    # Redo the experiment and average the data.
     
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
