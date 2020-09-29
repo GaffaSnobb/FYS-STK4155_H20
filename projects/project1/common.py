@@ -167,7 +167,7 @@ class Regression:
         self.max_poly_degree = max_poly_degree
 
     
-    def cross_validation(self, degree, folds):
+    def cross_validation(self, degree, folds, lambd=0):
         """
         Parameters
         ----------
@@ -178,6 +178,10 @@ class Regression:
 
         folds : int
             The number of folds.
+
+        lambd : float
+            Ridge regression parameter.  Defaults to 0 which means no
+            ridge regression.
         """
 
         if degree > self.max_poly_degree:
@@ -204,7 +208,7 @@ class Regression:
             X_validation = X_split.pop(i)
             X_training = np.concatenate(X_split)
 
-            beta = ols(X_training, y_training)
+            beta = ols(X_training, y_training, lambd)
             y_predicted = X_validation@beta
             mse += mean_squared_error(y_predicted, y_validation)
 
@@ -254,7 +258,7 @@ class Regression:
         return r_score_train, mse_train, r_score_test, mse_test
         
 
-    def bootstrap(self, degree, n_bootstraps):
+    def bootstrap(self, degree, n_bootstraps, lambd=0):
         """
         Perform the OLS with bootstrapping.
 
@@ -267,6 +271,10 @@ class Regression:
 
         n_bootstraps : int
             The number of bootstrap samples.
+
+        lambd : float
+            Ridge regression parameter.  Defaults to 0 which means no
+            ridge regression.
 
         Returns
         -------
@@ -298,7 +306,7 @@ class Regression:
             predicted y values based on every resample.
             """
             X_resample, y_resample = resample(X_train, self.y_train)
-            beta = ols(X_resample, y_resample)
+            beta = ols(X_resample, y_resample, lambd)
 
             Y_predicted[:, b] = X_test@beta
 
