@@ -5,10 +5,10 @@ from common import Regression
 
 def bootstrap():
     n_data_points = 400
-    max_poly_degree = 15
+    max_poly_degree = 10
     noise_factor = 0.2
     n_bootstraps = 50
-    repetitions = 1 # Redo the experiment and average the data.
+    repetitions = 10 # Redo the experiment and average the data.
 
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
@@ -18,6 +18,8 @@ def bootstrap():
     lambdas = np.logspace(-8, -2, n_lambdas)
 
     mse_boot = np.zeros((n_lambdas, n_degrees))
+    variance_boot = np.zeros((n_lambdas, n_degrees))
+    bias_boot = np.zeros((n_lambdas, n_degrees))
     
     bootstrap_time = 0
 
@@ -37,24 +39,48 @@ def bootstrap():
                 """
                 Loop over degrees.
                 """
-                bootstrap_time_tmp = time.time()
-                mse_boot_tmp, _, _ = \
+                mse_boot_tmp, variance_boot_tmp, bias_boot_tmp = \
                     q.bootstrap(degrees[k], n_bootstraps, lambd=lambdas[j])
-                bootstrap_time += time.time() - bootstrap_time_tmp
+                
                 mse_boot[j, k] += mse_boot_tmp
+                variance_boot[j, k] += variance_boot_tmp
+                bias_boot[j, k] += bias_boot_tmp
 
-    bootstrap_time /= n_lambdas*n_degrees
-    print(f"avg. bootstrap time: {bootstrap_time}")
     
     
     mse_boot /= repetitions
-    idx = np.unravel_index(np.argmin(mse_boot), mse_boot.shape)
+    variance_boot /= repetitions
+    bias_boot /= repetitions
+    
     X, Y = np.meshgrid(degrees, lambdas)
-    plt.contourf(X, Y, np.log10(mse_boot))
-    plt.xlabel("degrees")
-    plt.ylabel("lambdas")
-    plt.title(f"min: lambda={lambdas[idx[0]]}, degree={degrees[idx[1]]}")
-    plt.colorbar()
+    
+    fig0, ax0 = plt.subplots()
+    idx = np.unravel_index(np.argmin(mse_boot), mse_boot.shape)
+    mappable = ax0.contourf(X, Y, np.log10(mse_boot))
+    ax0.set_xlabel("degrees")
+    ax0.set_ylabel("lambdas")
+    ax0.set_title(f"mse\nmin: lambda={lambdas[idx[0]]}, degree={degrees[idx[1]]}")
+    cbar = plt.colorbar(mappable)
+    # plt.show()
+
+    fig1, ax1 = plt.subplots()
+    mappable = ax1.contourf(X, Y, np.log10(variance_boot))
+    ax1.set_title("variance")
+    ax1.set_xlabel("degrees")
+    ax1.set_ylabel("lambdas")
+    cbar = plt.colorbar(mappable)
+    # cbar.set_label(r"$log_{10}$ error", fontsize=40)
+    # cbar.ax.tick_params(labelsize=30)
+    # plt.show()
+
+    fig2, ax2 = plt.subplots()
+    mappable = ax2.contourf(X, Y, np.log10(bias_boot))
+    ax2.set_title("bias")
+    ax2.set_xlabel("degrees")
+    ax2.set_ylabel("lambdas")
+    cbar = plt.colorbar(mappable)
+    # cbar.set_label(r"$log_{10}$ error", fontsize=40)
+    # cbar.ax.tick_params(labelsize=30)
     plt.show()
 
 
@@ -107,6 +133,6 @@ def cross_validation():
 
 
 if __name__ == "__main__":
-    # bootstrap()
-    cross_validation()
+    bootstrap()
+    # cross_validation()
     pass
