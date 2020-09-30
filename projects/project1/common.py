@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
+from sklearn.linear_model import Lasso
 
 def create_design_matrix(x1, x2, N, degree):
     """
@@ -173,7 +174,7 @@ class Regression:
         if split_scale: self._split_scale()
 
     
-    def cross_validation(self, degree, folds, lambd=0):
+    def cross_validation(self, degree, folds, lambd=0, alpha=0):
         """
         Parameters
         ----------
@@ -188,6 +189,10 @@ class Regression:
         lambd : float
             Ridge regression parameter.  Defaults to 0 which means no
             ridge regression.
+
+        alpha : float
+            Lasso regression parameter.  Defaults to 0 which means no
+            Lasso regression.
         """
 
         if degree > self.max_poly_degree:
@@ -199,6 +204,11 @@ class Regression:
         rest = self.n_data_points%folds # The leftover data points which will be excluded.
         X = X[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
         y = self.y[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
+
+        # state = np.random.get_state()
+        # np.random.shuffle(X)
+        # np.random.set_state(state)
+        # np.random.shuffle(y)
 
         mse = 0
         
@@ -214,7 +224,18 @@ class Regression:
             X_validation = X_split.pop(i)
             X_training = np.concatenate(X_split)
 
-            beta = ols(X_training, y_training, lambd)
+            X_mean = np.mean(X_training)
+            X_std = np.std(X_training)
+            X_training = (X_training - X_mean)/X_std
+            X_validation = (X_validation - X_mean)/X_std
+
+            if alpha == 0:
+                beta = ols(X_training, y_training, lambd)
+            else:
+                clf = Lasso(alpha=alpha, fit_intercept=False, normalize=True, max_iter=10000, tol=0.07)
+                clf.fit(X_training, y_training)
+                beta = clf.coef_
+            
             y_predicted = X_validation@beta
             mse += mean_squared_error(y_predicted, y_validation)
 
@@ -262,7 +283,7 @@ class Regression:
         return r_score_train, mse_train, r_score_test, mse_test
         
 
-    def bootstrap(self, degree, n_bootstraps, lambd=0):
+    def bootstrap(self, degree, n_bootstraps, lambd=0, alpha=0):
         """
         Perform the OLS with bootstrapping.
 
@@ -290,6 +311,10 @@ class Regression:
 
         bias_boot : float
             The bias.
+
+        alpha : float
+            Lasso regression parameter.  Defaults to 0 which means no
+            Lasso regression.
         """
         
         # For slicing the correct number of features.
@@ -301,6 +326,11 @@ class Regression:
         n_test_data_points = self.X_test.shape[0]
         Y_predicted = np.empty((n_test_data_points, n_bootstraps))
 
+        # state = np.random.get_state()
+        # np.random.shuffle(X_train)
+        # np.random.set_state(state)
+        # np.random.shuffle(self.y_train)
+
 
         for b in range(n_bootstraps):
             """
@@ -308,7 +338,13 @@ class Regression:
             predicted y values based on every resample.
             """
             X_resample, y_resample = resample(X_train, self.y_train)
-            beta = ols(X_resample, y_resample, lambd)
+            if alpha == 0:
+                beta = ols(X_resample, y_resample, lambd)
+            else:
+                clf = Lasso(alpha=alpha, fit_intercept=False, normalize=True, max_iter=10000, tol=0.07)
+                clf.fit(X_resample, y_resample)
+                beta = clf.coef_
+
 
             Y_predicted[:, b] = X_test@beta
 
