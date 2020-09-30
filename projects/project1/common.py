@@ -138,7 +138,8 @@ def ols(X, y, lambd=0):
 
 
 class Regression:
-    def __init__(self, n_data_points, noise_factor, max_poly_degree):
+    def __init__(self, n_data_points, noise_factor, max_poly_degree,
+            split_scale=True):
         """
         Create design matrix self.X and observed function values
         self.y_observed based on randomly drawn numbers in [0, 1).
@@ -155,6 +156,9 @@ class Regression:
 
         max_poly_degree : int
             The maximum polynomial degree.
+
+        split_scale : boolean
+            For toggling split and scaling on / off.
         """
 
         x1 = np.random.uniform(0, 1, n_data_points)
@@ -165,6 +169,8 @@ class Regression:
         self.X = create_design_matrix(x1, x2, n_data_points, max_poly_degree)
         self.n_data_points = n_data_points
         self.max_poly_degree = max_poly_degree
+
+        if split_scale: self._split_scale()
 
     
     def cross_validation(self, degree, folds, lambd=0):
@@ -212,9 +218,7 @@ class Regression:
             y_predicted = X_validation@beta
             mse += mean_squared_error(y_predicted, y_validation)
 
-        mse /= folds    # Average the mse.
-
-        return mse
+        return mse/folds
 
 
     def standard_least_squares_regression(self, degree):
@@ -286,9 +290,7 @@ class Regression:
 
         bias_boot : float
             The bias.
-        
         """
-        self._split_scale()
         
         # For slicing the correct number of features.
         n_features = features(degree)
@@ -313,7 +315,6 @@ class Regression:
         mse_boot = mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
         variance_boot = np.mean(np.var(Y_predicted, axis=1))
         bias_boot = np.mean((self.y_test - np.mean(Y_predicted, axis=1))**2)
-
         return mse_boot, variance_boot, bias_boot
 
 
