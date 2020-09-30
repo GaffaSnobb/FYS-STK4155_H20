@@ -4,7 +4,7 @@ from common import Regression
 
 if __name__ == "__main__":
     n_data_points = 400
-    max_poly_degree = 15
+    max_poly_degree = 10
     noise_factor = 0.1
     n_bootstraps = 50
     repetitions = 10 # Redo the experiment and average the data.
@@ -27,7 +27,7 @@ if __name__ == "__main__":
             """
             Loop over polynomial degrees.
             """
-            mse_tmp, variance_tmp, bias_tmp = q.bootstrap(degree=j, n_bootstraps=n_bootstraps)
+            mse_tmp, variance_tmp, bias_tmp = q.bootstrap(degree=degrees[j], n_bootstraps=n_bootstraps)
             mse[j] += mse_tmp
             variance[j] += variance_tmp
             bias[j] += bias_tmp
