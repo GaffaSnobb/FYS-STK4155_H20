@@ -169,7 +169,7 @@ class Regression:
         self.X = create_design_matrix(x1, x2, n_data_points, max_poly_degree)
         self.n_data_points = n_data_points
         self.max_poly_degree = max_poly_degree
-
+        self.noise_factor = noise_factor
         if split_scale: self._split_scale()
 
     
@@ -251,6 +251,7 @@ class Regression:
         X_test = self.X_test[:, :features(degree)] # Slice the correct number of features.
         
         beta = ols(X_train, self.y_train)
+        var_beta = self.noise_factor*np.diag(np.linalg.pinv(X_test.T@X_test))
         y_model = X_train@beta
         y_predicted = X_test@beta
 
@@ -259,7 +260,7 @@ class Regression:
         mse_train = mean_squared_error(self.y_train, y_model)
         mse_test = mean_squared_error(self.y_test, y_predicted)
 
-        return r_score_train, mse_train, r_score_test, mse_test
+        return r_score_train, mse_train, r_score_test, mse_test, beta, var_beta
         
 
     def bootstrap(self, degree, n_bootstraps, lambd=0):
