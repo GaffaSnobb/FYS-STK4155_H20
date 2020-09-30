@@ -8,7 +8,7 @@ def bootstrap():
     max_poly_degree = 10
     noise_factor = 0.2
     n_bootstraps = 50
-    repetitions = 10 # Redo the experiment and average the data.
+    repetitions = 1 # Redo the experiment and average the data.
 
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
@@ -20,8 +20,6 @@ def bootstrap():
     mse_boot = np.zeros((n_lambdas, n_degrees))
     variance_boot = np.zeros((n_lambdas, n_degrees))
     bias_boot = np.zeros((n_lambdas, n_degrees))
-    
-    bootstrap_time = 0
 
     for i in range(repetitions):
         """
