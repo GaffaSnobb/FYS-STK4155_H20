@@ -138,6 +138,8 @@ def ols(X, y, lambd=0):
 
 
 class Regression:
+    using_ridge = False
+    using_lasso = False
     def __init__(self, n_data_points, noise_factor, max_poly_degree,
             split_scale=True):
         """
@@ -192,7 +194,24 @@ class Regression:
         alpha : float
             Lasso regression parameter.  Defaults to 0 which means no
             Lasso regression.
+
+        Returns
+        -------
+        mse/folds : float
+            The mean squared error of the cross validation.
         """
+
+        if (lambd != 0) and (alpha != 0):
+            print("WARNING: Both lambda (Ridge) and alpha (Lasso) are specified."
+                + " Alpha will override.")
+
+        if (lambd != 0) and not self.using_ridge:
+            print("Using Rigde regression.")
+            self.using_ridge = True
+
+        if (alpha != 0) and not self.using_lasso:
+            print("Using Lasso regression.")
+            self.using_lasso = True
 
         if degree > self.max_poly_degree:
             print("Input polynomial degree cannot be larger than max_poly_degree.")
@@ -204,12 +223,14 @@ class Regression:
         X = X[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
         y = self.y[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
 
-        # state = np.random.get_state()
-        # np.random.shuffle(X)
-        # np.random.set_state(state)
-        # np.random.shuffle(y)
+        # Shuffle data for every new k fold.
+        state = np.random.get_state()
+        np.random.shuffle(X)
+        np.random.set_state(state)
+        np.random.shuffle(y)
 
         mse = 0
+        mse_training = 0
         
         for i in range(folds):
             """
@@ -236,9 +257,11 @@ class Regression:
                 beta = clf.coef_
             
             y_predicted = X_validation@beta
+            y_model = X_training@beta
             mse += mean_squared_error(y_predicted, y_validation)
+            mse_training += mean_squared_error(y_model, y_training)
 
-        return mse/folds
+        return mse/folds, mse_training/folds
 
 
     def standard_least_squares_regression(self, degree):
@@ -357,11 +380,11 @@ class Regression:
         """
         Split the data into training and test sets.  Scale the data by
         subtracting the mean and dividing by the standard deviation,
-        both values from the training set.
+        both values from the training set.  Shuffle the values
         """
         # Splitting.
         self.X_train, self.X_test, self.y_train, self.y_test = \
-            train_test_split(self.X, self.y, test_size=0.2)
+            train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
 
         # Scaling.
         X_mean = np.mean(self.X_train)
