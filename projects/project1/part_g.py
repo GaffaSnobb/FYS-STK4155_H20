@@ -5,23 +5,23 @@ from common import Regression, create_design_matrix
 
 
 class Terrain(Regression):
-    def __init__(self, max_poly_degree, every_nth=50):
+    def __init__(self, max_poly_degree, step=50):
         """
         Parameters
         ----------
         max_poly_degree : int
             The maximum polynomial degree.
 
-        every_nth : int
-            Keep only every nth data point.  This is the 'step' in
+        step : int
+            Keep only every 'step'th data point.  This is the 'step' in
             slicing ([start:stop:step]).
         """
         terrain = imread("SRTM_data_Norway_1.tif")
         self.max_poly_degree = max_poly_degree
         
-        self.y = terrain[0:terrain.shape[1]] # Equal dimension length.
-        self.y = self.y[::every_nth, ::every_nth]   # Keep only a part of the values.
-        self.sliced_shape = self.y.shape
+        self.y = terrain[0:terrain.shape[1]] # Equal dimension lengths.
+        self.y = self.y[::step, ::step]   # Keep only a part of the values.
+        self.sliced_shape = self.y.shape    # Debug. Can prob. be removed.
         self.y = self.y.ravel()
         self.n_data_points = self.y.shape[0]
 
@@ -33,12 +33,13 @@ class Terrain(Regression):
 
 
 def ridge_cv():
-    max_poly_degree = 5
+    max_poly_degree = 10
     folds = 5
+    # Use 100 repetitions to get nice and smooth data.
     repetitions = 10 # Redo the experiment and average the data.
 
-    n_lambdas = 40
-    lambdas = np.logspace(-18, 1, n_lambdas)
+    n_lambdas = 60
+    lambdas = np.logspace(-16, 2, n_lambdas)
     mse_cv = np.zeros(n_lambdas)
     mse_cv_training = np.zeros(n_lambdas)
     
@@ -47,7 +48,7 @@ def ridge_cv():
         Repeat the experiment and average the produced values.
         """
         print(f"repetition {i+1} of {repetitions}")
-        q = Terrain(max_poly_degree)
+        q = Terrain(max_poly_degree, step=110)
         for j in range(n_lambdas):
             mse_cv_tmp, mse_cv_training_tmp = \
                 q.cross_validation(degree=max_poly_degree, folds=folds, lambd=lambdas[j])
@@ -58,24 +59,26 @@ def ridge_cv():
     mse_cv /= repetitions
     mse_cv_training /= repetitions
 
-    print(q.sliced_shape)
-
-    plt.semilogx(lambdas, mse_cv, label="mse cv")
-    plt.semilogx(lambdas, mse_cv_training, label="mse cv training")
-    plt.xlabel("lambda")
-    plt.ylabel("MSE")
-    plt.title("Ridge regression")
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(9, 7))
+    fig.tight_layout(pad=4)
+    ax.semilogx(lambdas, mse_cv, label="Test", color="black")
+    ax.semilogx(lambdas, mse_cv_training, label="Train", color="grey", linestyle="dashed")
+    ax.set_xlabel("$\lambda$", fontsize=15)
+    ax.set_ylabel("MSE", fontsize=15)
+    ax.set_title("Cross validation with ridge regression", fontsize=17)
+    ax.tick_params(labelsize=12)
+    ax.legend(fontsize=17)
     plt.show()
 
 
 def lasso_cv():
-    max_poly_degree = 5
+    poly_degree = 10
     folds = 5
-    repetitions = 5 # Redo the experiment and average the data.
+    # Use 100 repetitions to get nice and smooth data.
+    repetitions = 10 # Redo the experiment and average the data.
 
-    n_alphas = 40
-    alphas = np.logspace(-18, 1, n_alphas)
+    n_alphas = 100
+    alphas = np.logspace(-16, 1.5, n_alphas)
     mse_cv = np.zeros(n_alphas)
     mse_cv_training = np.zeros(n_alphas)
     
@@ -84,10 +87,10 @@ def lasso_cv():
         Repeat the experiment and average the produced values.
         """
         print(f"repetition {i+1} of {repetitions}")
-        q = Terrain(max_poly_degree)
+        q = Terrain(max_poly_degree=poly_degree, step=110)
         for j in range(n_alphas):
             mse_cv_tmp, mse_cv_training_tmp = \
-                q.cross_validation(degree=max_poly_degree, folds=folds, alpha=alphas[j])
+                q.cross_validation(degree=poly_degree, folds=folds, alpha=alphas[j])
             mse_cv[j] += mse_cv_tmp
             mse_cv_training[j] += mse_cv_training_tmp
             
@@ -95,14 +98,15 @@ def lasso_cv():
     mse_cv /= repetitions
     mse_cv_training /= repetitions
 
-    print(q.sliced_shape)
-
-    plt.semilogx(alphas, mse_cv, label="mse cv")
-    plt.semilogx(alphas, mse_cv_training, label="mse cv training")
-    plt.xlabel("alpha")
-    plt.ylabel("MSE")
-    plt.title("Lasso regression")
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(9, 7))
+    fig.tight_layout(pad=4)
+    ax.semilogx(alphas, mse_cv, label="Test", color="black")
+    ax.semilogx(alphas, mse_cv_training, label="Train", color="grey", linestyle="dashed")
+    ax.set_xlabel(r"$\alpha$", fontsize=15)
+    ax.set_ylabel("MSE", fontsize=15)
+    ax.set_title("Cross validation with lasso regression", fontsize=17)
+    ax.tick_params(labelsize=12)
+    ax.legend(fontsize=17)
     plt.show()
 
 
@@ -197,5 +201,6 @@ def plain_ols():
 
 if __name__ == "__main__":
     # ridge_cv()
-    # lasso_cv()
-    plain_ols()
+    lasso_cv()
+    # plain_ols()
+    pass
