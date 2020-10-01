@@ -4,7 +4,8 @@ from common import Regression
 
 if __name__ == "__main__":
     n_data_points = 800
-    max_poly_degree = 20
+    #[800, 1600, 5000, 10000]
+    max_poly_degree = 15
     noise_factor = 0.2
     folds = 5
     repetitions = 20    # Redo the experiment and average the data.
@@ -42,10 +43,12 @@ if __name__ == "__main__":
 
     plt.plot(degrees, mse_train, label="train")
     plt.plot(degrees, mse_test, label="test")
+    plt.legend()
     plt.title("mse")
     plt.show()
 
     plt.plot(degrees, r_score_train, label="train")
     plt.plot(degrees, r_score_test, label="test")
     plt.title("r score")
+    plt.legend()
     plt.show()
