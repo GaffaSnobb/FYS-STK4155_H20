@@ -19,7 +19,7 @@ def create_design_matrix(x1, x2, N, degree):
         Dependent variable.
 
     N : int
-        The number of randomly drawn data ponts.
+        The number of data ponts.
 
     degree : int
         The polynomial degree.
@@ -31,7 +31,6 @@ def create_design_matrix(x1, x2, N, degree):
         columns.
     """
     
-    # features = int((degree + 1)*(degree + 2)/2)
     X = np.empty((N, features(degree)))     # Data points x features.
     X[:, 0] = 1 # Intercept.
     col_idx = 1 # For indexing the design matrix columns.
