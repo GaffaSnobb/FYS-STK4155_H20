@@ -107,12 +107,17 @@ def lasso_cv():
 
 
 def plain_ols():
+    """
+    Use OLS on the terrain data.  Show the change in overfitting, as MSE
+    and R score as a function of polynomial degree, for different number
+    of data points.
+    """
     max_poly_degree = 20
     repetitions = 100    # Redo the experiment and average the data.
     
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
-    steps = [125, 100, 75, 50]
+    steps = [125, 100, 75, 50]  # These are slice values for the terrain data array.
     
     fig0, ax0 = plt.subplots(nrows=2, ncols=2, figsize=(9, 7))
     fig0.tight_layout(pad=2.5)
