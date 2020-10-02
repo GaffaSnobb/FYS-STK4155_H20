@@ -16,7 +16,7 @@ def contour():
 
     n_alphas = 20
     # alphas = np.linspace(0, 1, n_alphas)
-    alphas = np.logspace(-10, -2, n_alphas)
+    alphas = np.logspace(-8, -2, n_alphas)
     mse_cv = np.zeros((n_alphas, n_degrees))
     
     for i in range(repetitions):
@@ -31,7 +31,7 @@ def contour():
             print(f"alpha {j+1} of {n_alphas}, alpha = {alphas[j]}")
             for k in range(n_degrees):
 
-                mse_cv_tmp = \
+                mse_cv_tmp, _ = \
                     q.cross_validation(degrees[k], folds, alpha=alphas[j])
                 mse_cv[j, k] += mse_cv_tmp
 
@@ -71,7 +71,7 @@ def cross_validation():
         for j in range(n_alphas):
             print(f"alpha {j+1} of {n_alphas}, alpha = {alphas[j]}")
 
-            mse_cv_tmp = \
+            mse_cv_tmp, _ = \
                 q.cross_validation(max_poly_degree, folds, alpha=alphas[j])
             mse_cv[j] += mse_cv_tmp
 
@@ -163,6 +163,6 @@ def bootstrap():
     plt.show()
 
 if __name__ == "__main__":
-    # contour()
+    contour()
     # cross_validation()
-    bootstrap()
+    # bootstrap()
