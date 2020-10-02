@@ -113,7 +113,7 @@ def cross_validation():
             for k in range(n_degrees):
 
                 cv_time_tmp = time.time()
-                mse_cv_tmp = \
+                mse_cv_tmp, _ = \
                     q.cross_validation(degrees[k], folds, lambd=lambdas[j])
                 cv_time += time.time() - cv_time_tmp
                 mse_cv[j, k] += mse_cv_tmp
