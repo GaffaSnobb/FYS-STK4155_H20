@@ -26,7 +26,7 @@ if __name__ == "__main__":
             """
             Loop over polynomial degrees.
             """
-            mse_cv_tmp = q.cross_validation(degree=degrees[j], folds=folds)
+            mse_cv_tmp, _ = q.cross_validation(degree=degrees[j], folds=folds)
             mse_boot_tmp, _, _ = q.bootstrap(degree=degrees[j], n_bootstraps=n_bootstraps)
             mse_cv[j] += mse_cv_tmp
             mse_boot[j] += mse_boot_tmp
@@ -34,9 +34,12 @@ if __name__ == "__main__":
     mse_cv /= repetitions
     mse_boot /= repetitions
 
-    plt.plot(degrees, mse_cv, label="mse cv")
-    plt.plot(degrees, mse_boot, label="mse boot")
-    plt.legend()
+    plt.plot(degrees, mse_cv, label="mse cv", color="black")
+    plt.plot(degrees, mse_boot, label="mse boot", color="grey", linestyle="dashed")
+    plt.xlabel("Polynomial degree", fontsize=15)
+    plt.ylabel("MSE", fontsize=15)
+    plt.tick_params(labelsize=12)
+    plt.legend(fontsize=17)
     plt.show()
 
 

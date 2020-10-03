@@ -36,9 +36,12 @@ if __name__ == "__main__":
     variance /= repetitions
     bias /= repetitions
 
-    plt.plot(degrees, mse, label="mse")
-    plt.plot(degrees, variance, label="variance")
-    plt.plot(degrees, bias, label="bias")
-    plt.title("bootstrap")
-    plt.legend()
+    plt.plot(degrees, mse, label="mse", color="black")
+    plt.plot(degrees, variance, label="variance", color="grey", linestyle="dashed")
+    plt.plot(degrees, bias, label="bias", color="black", linestyle="dotted")
+    plt.title("Bootstrap", fontsize=17)
+    plt.xlabel("Error", fontsize=15)
+    plt.ylabel("Polynomial degree", fontsize=15)
+    plt.tick_params(labelsize=12)
+    plt.legend(fontsize=17)
     plt.show()
