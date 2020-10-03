@@ -41,10 +41,12 @@ def contour():
 
     idx = np.unravel_index(np.argmin(mse_cv), mse_cv.shape)
     plt.contourf(X, Y, mse_cv)
-    plt.xlabel("degrees")
-    plt.ylabel("alphas")
-    plt.title(f"min: alpha={alphas[idx[0]]}, degree={degrees[idx[1]]}")
-    plt.colorbar()
+    plt.xlabel("Degrees", fontsize=15)
+    plt.ylabel("Alphas", fontsize=15)
+    plt.title(f"min: alpha={alphas[idx[0]]}, degree={degrees[idx[1]]}", fontsize=15)
+    plt.tick_params(labelsize=12)
+    cbar = plt.colorbar()
+    cbar.ax.tick_params(labelsize=12)
     plt.show()
 
 
