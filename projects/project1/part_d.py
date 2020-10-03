@@ -54,11 +54,12 @@ def bootstrap():
     
 
     fig1, ax0 = plt.subplots(nrows=1, ncols=2)
+
     ax0 = ax0.ravel()
     mappable = ax0[0].contourf(X, Y, np.log10(variance_boot))
-    ax0[0].set_title("variance", fontsize=17)
-    ax0[0].set_xlabel("degrees", fontsize=15)
-    ax0[0].set_ylabel("lambdas", fontsize=15)
+    ax0[0].set_title("Variance", fontsize=17)
+    ax0[0].set_xlabel("Degrees", fontsize=15)
+    ax0[0].set_ylabel("Lambdas", fontsize=15)
     ax0[0].tick_params(labelsize=12)
     cbar = plt.colorbar(mappable, ax=ax0[0])
     cbar.ax.tick_params(labelsize=12)
@@ -67,13 +68,13 @@ def bootstrap():
     # plt.show()
 
     mappable = ax0[1].contourf(X, Y, np.log10(bias_boot))
-    ax0[1].set_title("bias", fontsize=17)
-    ax0[1].set_xlabel("degrees", fontsize=15)
-    ax0[1].set_ylabel("lambdas", fontsize=15)
+    ax0[1].set_title("Bias", fontsize=17)
+    ax0[1].set_xlabel("Degrees", fontsize=15)
+    ax0[1].set_ylabel("Lambdas", fontsize=15)
     ax0[1].tick_params(labelsize=12)
     cbar = plt.colorbar(mappable)
     cbar.ax.tick_params(labelsize=12)
-    # cbar.set_label(r"$log_{10}$ error", fontsize=40)
+    #cbar.set_label(r"$log_{10}$ error", fontsize=40)
     # cbar.ax.tick_params(labelsize=30)
     plt.show()
 
@@ -128,14 +129,14 @@ def cross_validation():
     idx = np.unravel_index(np.argmin(mse_cv), mse_cv.shape)
     X, Y = np.meshgrid(degrees, lambdas)
     plt.contourf(X, Y, np.log10(mse_cv))
-    plt.xlabel("Degrees")
-    plt.ylabel("Lambdas")
-    plt.title(f"min: lambda={lambdas[idx[0]]}, degree={degrees[idx[1]]}")
+    plt.xlabel("Degrees", fontsize=15)
+    plt.ylabel("Lambdas",fontsize=15)
+    plt.title(f"min: lambda={lambdas[idx[0]]}, degree={degrees[idx[1]]}", fontsize=15)
     plt.colorbar()
     plt.show()
 
 
 if __name__ == "__main__":
     bootstrap()
-    # cross_validation()
+    cross_validation()
     pass
