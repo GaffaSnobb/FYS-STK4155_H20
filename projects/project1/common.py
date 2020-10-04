@@ -224,10 +224,10 @@ class Regression:
         y = self.y[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
 
         # Shuffle data for every new k fold.
-        state = np.random.get_state()
-        np.random.shuffle(X)
-        np.random.set_state(state)
-        np.random.shuffle(y)
+        #state = np.random.get_state()
+        #np.random.shuffle(X)
+        #np.random.set_state(state)
+        #np.random.shuffle(y)
 
         mse = 0
         mse_training = 0
