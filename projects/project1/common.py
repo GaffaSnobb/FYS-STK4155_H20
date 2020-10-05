@@ -175,7 +175,7 @@ class Regression:
         if split_scale: self._split_scale()
 
     
-    def cross_validation(self, degree, folds, lambd=0, alpha=0):
+    def cross_validation(self, degree, folds, lambd=0, alpha=0, shuffle=False):
         """
         Parameters
         ----------
@@ -223,14 +223,16 @@ class Regression:
         X = X[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
         y = self.y[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
 
-        # Shuffle data for every new k fold.
-        state = np.random.get_state()
-        np.random.shuffle(X)
-        np.random.set_state(state)
-        np.random.shuffle(y)
+        if shuffle:
+            # Shuffle data for every new k fold.
+            state = np.random.get_state()
+            np.random.shuffle(X)
+            np.random.set_state(state)
+            np.random.shuffle(y)
 
         mse = 0
         mse_training = 0
+        self.r_score_cv = 0
         
         for i in range(folds):
             """
@@ -260,6 +262,11 @@ class Regression:
             y_model = X_training@beta
             mse += mean_squared_error(y_predicted, y_validation)
             mse_training += mean_squared_error(y_model, y_training)
+
+            self.r_score_cv += 1 - np.sum((y_validation - y_predicted)**2)/\
+                np.sum((y_validation - np.mean(y_validation))**2)
+
+        self.r_score_cv /= folds
 
         return mse/folds, mse_training/folds
 
@@ -349,12 +356,12 @@ class Regression:
         # Keep all the predictions for later calculations.
         n_test_data_points = self.X_test.shape[0]
         Y_predicted = np.empty((n_test_data_points, n_bootstraps))
+        self.r_score_boot = 0
 
         # state = np.random.get_state()
         # np.random.shuffle(X_train)
         # np.random.set_state(state)
         # np.random.shuffle(self.y_train)
-
 
         for b in range(n_bootstraps):
             """
@@ -372,6 +379,10 @@ class Regression:
 
             Y_predicted[:, b] = X_test@beta
 
+            self.r_score_boot += 1 - np.sum((self.y_test - Y_predicted[:, b])**2)/\
+                np.sum((self.y_test - np.mean(self.y_test))**2)
+
+        self.r_score_boot /= n_bootstraps
         mse_boot = mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
         variance_boot = np.mean(np.var(Y_predicted, axis=1))
         bias_boot = np.mean((self.y_test - np.mean(Y_predicted, axis=1))**2)
