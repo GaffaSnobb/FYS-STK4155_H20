@@ -120,14 +120,14 @@ def lasso_cv():
     # plt.show()
 
 
-def plain_ols():
+def mse_r_plain_ols():
     """
     Use OLS on the terrain data.  Show the change in overfitting, as MSE
     and R score as a function of polynomial degree, for different number
     of data points.
     """
     max_poly_degree = 20
-    repetitions = 1000    # Redo the experiment and average the data.
+    repetitions = 10    # Redo the experiment and average the data.
     
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
@@ -206,13 +206,125 @@ def plain_ols():
     ax1[1].set_xticklabels(labels=[])
     ax1[1].legend(fontsize=12)
     
-    # plt.show()
     fig0.savefig(dpi=300, fname="part_g_terrain_ols_mse_vs_poly_deg.pdf")
     fig1.savefig(dpi=300, fname="part_g_terrain_ols_r_vs_poly_deg.pdf")
+    plt.show()
+
+
+def mse_r_compare():
+    max_poly_degree = 20
+    repetitions = 10    # Redo the experiment and average the data.
+    
+    degrees = np.arange(1, max_poly_degree+1, 1)
+    n_degrees = len(degrees)
+    steps = [125, 100, 75, 50]  # These are slice values for the terrain data array.
+    
+    fig0, ax0 = plt.subplots(nrows=2, ncols=2, figsize=(9, 7))
+    fig0.tight_layout(pad=2.5)
+    fig0.text(x=0.4, y=0.02, s="Polynomial degree", fontsize=15)
+    fig0.text(x=0.03, y=0.48, s="MSE", fontsize=15, rotation="vertical")
+    ax0 = ax0.ravel()
+    
+    fig1, ax1 = plt.subplots(nrows=2, ncols=2, figsize=(9, 7))
+    fig1.tight_layout(pad=2.5)
+    fig1.text(x=0.4, y=0.02, s="Polynomial degree", fontsize=15)
+    fig1.text(x=0.03, y=0.5, s="$R^2$", fontsize=15, rotation="vertical")
+    ax1 = ax1.ravel()
+
+    for k in range(len(steps)):
+        """
+        'step' defines the slicing step length of the original data.
+        Loop over steps to see how the model changes as the number of
+        data points changes.
+        """
+        print(f"step length {steps[k]}")
+        mse_train_avg = np.zeros(n_degrees)
+        mse_test_avg = np.zeros(n_degrees)
+        r_score_train_avg = np.zeros(n_degrees)
+        r_score_test_avg = np.zeros(n_degrees)
+
+        mse_boot_avg = np.zeros(n_degrees)
+        r_score_boot_avg = np.zeros(n_degrees)
+
+        mse_cv_avg = np.zeros(n_degrees)
+        r_score_cv_avg = np.zeros(n_degrees)
+        
+        for i in range(repetitions):
+            """
+            Repeat the experiment and average the produced values.
+            """
+            print(f"repetition {i+1} of {repetitions}")
+            q = Terrain(max_poly_degree, step=steps[k])
+            for j in range(n_degrees):
+                """
+                Loop over polynomial degrees.
+                """
+                r_score_train_tmp, mse_train_tmp, r_score_test_tmp, mse_test_tmp, _, _ = \
+                    q.standard_least_squares_regression(degree=degrees[j])
+
+                mse_boot_tmp, _, _ = q.bootstrap(degree=degrees[j], n_bootstraps=50)
+                mse_cv_tmp, _ = q.cross_validation(degree=degrees[j], folds=5, shuffle=True)
+                
+                r_score_train_avg[j] += r_score_train_tmp
+                r_score_test_avg[j] += r_score_test_tmp
+                mse_train_avg[j] += mse_train_tmp             
+                mse_test_avg[j] += mse_test_tmp
+
+                mse_boot_avg[j] += mse_boot_tmp
+                r_score_boot_avg[j] += q.r_score_boot
+
+                mse_cv_avg[j] += mse_cv_tmp
+                r_score_cv_avg[j] += q.r_score_cv
+
+        r_score_train_avg /= repetitions
+        r_score_test_avg /= repetitions
+        mse_train_avg /= repetitions
+        mse_test_avg /= repetitions
+
+        mse_boot_avg /= repetitions
+        r_score_boot_avg /= repetitions
+
+        mse_cv_avg /= repetitions
+        r_score_cv_avg /= repetitions
+
+        ax0[k].plot(degrees, mse_test_avg, color="darkgrey", label="plain test")
+        # ax0[k].plot(degrees, mse_train_avg, color="gray", linestyle="dashed", label="plain train")
+        ax0[k].plot(degrees, mse_boot_avg, color="dimgrey", linestyle="dashed", label="boot")
+        ax0[k].plot(degrees, mse_cv_avg, color="black", linestyle="dotted", label="cv")
+        ax0[k].set_title(f"Data points: {q.n_data_points}")
+        ax0[k].tick_params(labelsize=12)
+        ax0[k].set_yticks(ticks=[5e4, 6e4, 7e4])
+        ax0[k].set_ylim(4.5e4, 7.7e4)
+
+        # ax1[k].plot(degrees, r_score_train_avg, color="gray", linestyle="dashed", label="plain train")
+        ax1[k].plot(degrees, r_score_test_avg, color="darkgrey", label="plain test")
+        ax1[k].plot(degrees, r_score_boot_avg, color="dimgrey", linestyle="dashed", label="boot")
+        ax1[k].plot(degrees, r_score_cv_avg, color="black", linestyle="dotted", label="cv")
+        ax1[k].set_title(f"Data points: {q.n_data_points}")
+        ax1[k].tick_params(labelsize=12)
+        ax1[k].set_yticks(ticks=[-0.05, 0.05, 0.15, 0.25])
+        ax1[k].set_ylim(-0.05-0.05, 0.25+0.05)
+
+    ax0[1].set_yticklabels(labels=[])
+    ax0[3].set_yticklabels(labels=[])
+    ax0[0].set_xticklabels(labels=[])
+    ax0[1].set_xticklabels(labels=[])
+    ax0[1].legend(fontsize=12)
+
+    ax1[1].set_yticklabels(labels=[])
+    ax1[3].set_yticklabels(labels=[])
+    ax1[0].set_xticklabels(labels=[])
+    ax1[1].set_xticklabels(labels=[])
+    ax1[1].legend(fontsize=12)
+    
+    fig0.savefig(dpi=300, fname="part_g_terrain_compare_mse_vs_poly_deg.png")
+    fig1.savefig(dpi=300, fname="part_g_terrain_compare_r_vs_poly_deg.png")
+    plt.show()
 
 
 if __name__ == "__main__":
     # ridge_cv()
     # lasso_cv()
-    plain_ols()
+    # mse_r_plain_ols()
+    mse_r_compare()
     pass
