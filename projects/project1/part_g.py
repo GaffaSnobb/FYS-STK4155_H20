@@ -7,6 +7,11 @@ from common import Regression, create_design_matrix
 class Terrain(Regression):
     def __init__(self, max_poly_degree, step=50):
         """
+        This class inherits the methods of Regression which are the
+        different linear regression methods and resampling techniques.
+        The constructor is overwritten to allow for terrain data instead
+        of the constructed data.
+
         Parameters
         ----------
         max_poly_degree : int
@@ -29,6 +34,7 @@ class Terrain(Regression):
         x2 = np.linspace(0, 1, self.n_data_points)
         self.X = create_design_matrix(x1, x2, self.n_data_points, self.max_poly_degree)
 
+        self.noise_factor = 0   # Not directly in use, terrain data has unknown noise.
         self._split_scale()
 
 
@@ -60,7 +66,7 @@ def ridge_cv():
     mse_cv_training /= repetitions
 
     fig, ax = plt.subplots(figsize=(9, 7))
-    fig.tight_layout(pad=4)
+    fig.tight_layout(pad=4.1)
     ax.semilogx(lambdas, mse_cv, label="Test", color="black")
     ax.semilogx(lambdas, mse_cv_training, label="Train", color="grey", linestyle="dashed")
     ax.set_xlabel("$\lambda$", fontsize=15)
@@ -68,7 +74,9 @@ def ridge_cv():
     ax.set_title("Cross validation with ridge regression", fontsize=17)
     ax.tick_params(labelsize=12)
     ax.legend(fontsize=17)
-    plt.show()
+    plt.savefig(dpi=300,
+        fname="part_g_terrain_cv_ridge_mse_vs_lambda_polydeg10_folds5_step110.pdf")
+    # plt.show()
 
 
 def lasso_cv():
@@ -99,15 +107,17 @@ def lasso_cv():
     mse_cv_training /= repetitions
 
     fig, ax = plt.subplots(figsize=(9, 7))
-    fig.tight_layout(pad=4)
+    fig.tight_layout(pad=4.1)
     ax.semilogx(alphas, mse_cv, label="Test", color="black")
     ax.semilogx(alphas, mse_cv_training, label="Train", color="grey", linestyle="dashed")
-    ax.set_xlabel(r"$\alpha$", fontsize=15)
+    ax.set_xlabel(r"$\lambda$", fontsize=15)
     ax.set_ylabel("MSE", fontsize=15)
     ax.set_title("Cross validation with lasso regression", fontsize=17)
     ax.tick_params(labelsize=12)
     ax.legend(fontsize=17)
-    plt.show()
+    plt.savefig(dpi=300,
+        fname="part_g_terrain_cv_lasso_mse_vs_lambda_polydeg10_folds5_step110.pdf")
+    # plt.show()
 
 
 def plain_ols():
@@ -117,7 +127,7 @@ def plain_ols():
     of data points.
     """
     max_poly_degree = 20
-    repetitions = 100    # Redo the experiment and average the data.
+    repetitions = 1000    # Redo the experiment and average the data.
     
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
@@ -152,12 +162,12 @@ def plain_ols():
             Repeat the experiment and average the produced values.
             """
             print(f"repetition {i+1} of {repetitions}")
-            q = Terrain(max_poly_degree, every_nth=steps[k])
+            q = Terrain(max_poly_degree, step=steps[k])
             for j in range(n_degrees):
                 """
                 Loop over polynomial degrees.
                 """
-                r_score_train_tmp, mse_train_tmp, r_score_test_tmp, mse_test_tmp = \
+                r_score_train_tmp, mse_train_tmp, r_score_test_tmp, mse_test_tmp, _, _ = \
                     q.standard_least_squares_regression(degree=j)
 
                 r_score_train_avg[j] += r_score_train_tmp
@@ -195,12 +205,14 @@ def plain_ols():
     ax1[0].set_xticklabels(labels=[])
     ax1[1].set_xticklabels(labels=[])
     ax1[1].legend(fontsize=12)
-
-    plt.show()
+    
+    # plt.show()
+    fig0.savefig(dpi=300, fname="part_g_terrain_ols_mse_vs_poly_deg.pdf")
+    fig1.savefig(dpi=300, fname="part_g_terrain_ols_r_vs_poly_deg.pdf")
 
 
 if __name__ == "__main__":
     # ridge_cv()
-    lasso_cv()
-    # plain_ols()
+    # lasso_cv()
+    plain_ols()
     pass
