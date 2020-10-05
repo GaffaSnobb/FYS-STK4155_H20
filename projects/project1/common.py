@@ -224,10 +224,10 @@ class Regression:
         y = self.y[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
 
         # Shuffle data for every new k fold.
-        #state = np.random.get_state()
-        #np.random.shuffle(X)
-        #np.random.set_state(state)
-        #np.random.shuffle(y)
+        state = np.random.get_state()
+        np.random.shuffle(X)
+        np.random.set_state(state)
+        np.random.shuffle(y)
 
         mse = 0
         mse_training = 0
@@ -290,8 +290,9 @@ class Regression:
             The mean squared error of the test set.
         """
         self._split_scale()
-        X_train = self.X_train[:, :features(degree)] # Slice the correct number of features.
-        X_test = self.X_test[:, :features(degree)] # Slice the correct number of features.
+        n_features = features(degree)
+        X_train = self.X_train[:, :n_features] # Slice the correct number of features.
+        X_test = self.X_test[:, :n_features] # Slice the correct number of features.
         
         beta = ols(X_train, self.y_train)
         var_beta = self.noise_factor*np.diag(np.linalg.pinv(X_test.T@X_test))
@@ -304,7 +305,7 @@ class Regression:
         mse_test = mean_squared_error(self.y_test, y_predicted)
 
         return r_score_train, mse_train, r_score_test, mse_test, beta, var_beta
-        
+
 
     def bootstrap(self, degree, n_bootstraps, lambd=0, alpha=0):
         """
