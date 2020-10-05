@@ -62,7 +62,7 @@ if __name__ == "__main__":
     axs[1, 0].set_xticklabels(labels=[])
     axs[1, 1].set_xticklabels(labels=[])
     axs[0, 1].legend(fontsize=12)
-    fig.savefig(dpi=300, fname="part_c_compairing_bootstrap_cv.pdf")
+    fig.savefig(dpi=300, fname="part_c_comparing_bootstrap_cv.png")
     plt.show()
 
 
