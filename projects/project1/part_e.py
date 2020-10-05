@@ -48,9 +48,10 @@ def contour():
     cbar = plt.colorbar()
     cbar.ax.tick_params(labelsize=12)
     plt.show()
+    return degrees[idx[1]]
 
 
-def cross_validation():
+def cross_validation(best_degree):
     n_data_points = 400
     max_poly_degree = 7
     noise_factor = 0.2
@@ -74,14 +75,15 @@ def cross_validation():
             print(f"alpha {j+1} of {n_alphas}, alpha = {alphas[j]}")
 
             mse_cv_tmp, _ = \
-                q.cross_validation(max_poly_degree, folds, alpha=alphas[j])
+                q.cross_validation(best_degree, folds, alpha=alphas[j])
             mse_cv[j] += mse_cv_tmp
 
     mse_cv /= repetitions
 
 
     plt.semilogx(alphas, mse_cv)
-    plt.xlabel("lambda")
+    plt.title("Lasso with cross validation degree %d" %best_degree)
+    plt.xlabel("Lambda")
     plt.ylabel("MSE")
     plt.show()
 
@@ -138,17 +140,17 @@ def bootstrap():
     fig0, ax0 = plt.subplots()
     idx = np.unravel_index(np.argmin(mse_boot), mse_boot.shape)
     mappable = ax0.contourf(X, Y, np.log10(mse_boot))
-    ax0.set_xlabel("degrees")
-    ax0.set_ylabel("alphas")
-    ax0.set_title(f"mse\nmin: alpha={alphas[idx[0]]}, degree={degrees[idx[1]]}")
+    ax0.set_xlabel("Degrees")
+    ax0.set_ylabel("Lambdas")
+    ax0.set_title(f"MSE\nmin: lambda={alphas[idx[0]]}, degree={degrees[idx[1]]}")
     cbar = plt.colorbar(mappable)
     # plt.show()
 
     fig1, ax1 = plt.subplots()
     mappable = ax1.contourf(X, Y, np.log10(variance_boot))
-    ax1.set_title("variance")
-    ax1.set_xlabel("degrees")
-    ax1.set_ylabel("alphas")
+    ax1.set_title("Variance")
+    ax1.set_xlabel("Degrees")
+    ax1.set_ylabel("Lambdas")
     cbar = plt.colorbar(mappable)
     # cbar.set_label(r"$log_{10}$ error", fontsize=40)
     # cbar.ax.tick_params(labelsize=30)
@@ -156,15 +158,15 @@ def bootstrap():
 
     fig2, ax2 = plt.subplots()
     mappable = ax2.contourf(X, Y, np.log10(bias_boot))
-    ax2.set_title("bias")
-    ax2.set_xlabel("degrees")
-    ax2.set_ylabel("alphas")
+    ax2.set_title("Bias")
+    ax2.set_xlabel("Degrees")
+    ax2.set_ylabel("Lambdas")
     cbar = plt.colorbar(mappable)
     # cbar.set_label(r"$log_{10}$ error", fontsize=40)
     # cbar.ax.tick_params(labelsize=30)
     plt.show()
 
 if __name__ == "__main__":
-    contour()
-    # cross_validation()
-    # bootstrap()
+    best_degree = contour()
+    cross_validation(best_degree)
+    bootstrap()
