@@ -166,6 +166,7 @@ def bootstrap():
     # cbar.ax.tick_params(labelsize=30)
     plt.show()
 
+
 if __name__ == "__main__":
     best_degree = contour()
     cross_validation(best_degree)
