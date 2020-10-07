@@ -1,28 +1,34 @@
+import time
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 from numpy.core.numeric import cross
 from common import Regression
+from sklearn.utils.testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
-
+@ignore_warnings(category=ConvergenceWarning)
 def contour():
     n_data_points = 400
-    max_poly_degree = 10
+    max_poly_degree = 8
     noise_factor = 0.2
     folds = 5
-    repetitions = 1 # Redo the experiment and average the data.
+    repetitions = 20 # Redo the experiment and average the data.
 
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
 
-    n_alphas = 20
-    # alphas = np.linspace(0, 1, n_alphas)
-    alphas = np.logspace(-8, -2, n_alphas)
+    n_alphas = 10
+    # alphas = np.logspace(-4, -1, n_alphas)
+    alphas = np.logspace(-12, -6, n_alphas)
     mse_cv = np.zeros((n_alphas, n_degrees))
+    total_time = 0
     
     for i in range(repetitions):
         """
         Repeat the experiment and average the produced values.
         """
+        rep_time = time.time()
         print(f"repetition {i+1} of {repetitions}")
         q = Regression(n_data_points, noise_factor, max_poly_degree,
             split_scale=False)
@@ -35,38 +41,52 @@ def contour():
                     q.cross_validation(degrees[k], folds, alpha=alphas[j])
                 mse_cv[j, k] += mse_cv_tmp
 
+        rep_time = time.time() - rep_time
+        total_time += rep_time
+        print(f"repetition {i+1} took: {rep_time:.2f}s")
+        print(f"cumulative time: {total_time:.2f}s")
+
+    print(f"total time {total_time:.2f}s")
+
     mse_cv /= repetitions
 
     X, Y = np.meshgrid(degrees, alphas)
 
     idx = np.unravel_index(np.argmin(mse_cv), mse_cv.shape)
-    plt.contourf(X, Y, mse_cv)
-    plt.xlabel("Degrees", fontsize=15)
-    plt.ylabel("Lambdas", fontsize=15)
-    plt.title(f"min: lambda={alphas[idx[0]]}, degree={degrees[idx[1]]}", fontsize=15)
-    plt.tick_params(labelsize=12)
-    cbar = plt.colorbar()
+        
+    fig, ax = plt.subplots(figsize=(9, 7))
+    mappable = ax.contourf(X, Y, mse_cv)
+    ax.set_xlabel("Polynomial degree", fontsize=15)
+    ax.set_ylabel(r"$\lambda$", fontsize=15)
+    ax.set_title(f"min(MSE) = {np.amin(mse_cv):.4e} \nat $\lambda$={alphas[idx[0]]:.4e}, degree={degrees[idx[1]]}", fontsize=15)
+    ax.tick_params(labelsize=12)
+    cbar = plt.colorbar(mappable)
     cbar.ax.tick_params(labelsize=12)
-    plt.show()
+    cbar.set_label(r"MSE", fontsize=15)
+    plt.savefig(dpi=300,
+        fname=f"part_e_lasso_{folds}foldcv_lambda_polydeg_mse_{n_data_points}dpoints_{repetitions}reps.png")
+
     return degrees[idx[1]]
 
 
+@ignore_warnings(category=ConvergenceWarning)
 def cross_validation(best_degree):
     n_data_points = 400
-    max_poly_degree = 7
+    max_poly_degree = best_degree
     noise_factor = 0.2
     folds = 5
-    repetitions = 1 # Redo the experiment and average the data.
+    repetitions = 20 # Redo the experiment and average the data.
 
     n_alphas = 40
-    # alphas = np.linspace(1e-18, 1e-1, n_alphas)
-    alphas = np.logspace(-10, -1, n_alphas)
+    alphas = np.logspace(-12, -6, n_alphas)
     mse_cv = np.zeros(n_alphas)
+    total_time = 0
     
     for i in range(repetitions):
         """
         Repeat the experiment and average the produced values.
         """
+        rep_time = time.time()
         print(f"repetition {i+1} of {repetitions}")
         q = Regression(n_data_points, noise_factor, max_poly_degree,
             split_scale=False)
@@ -78,16 +98,26 @@ def cross_validation(best_degree):
                 q.cross_validation(best_degree, folds, alpha=alphas[j])
             mse_cv[j] += mse_cv_tmp
 
+        rep_time = time.time() - rep_time
+        total_time += rep_time
+        print(f"repetition {i+1} took: {rep_time:.2f}s")
+        print(f"cumulative time: {total_time:.2f}s")
+
+    print(f"total time {total_time:.2f}s")
+
     mse_cv /= repetitions
 
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.semilogx(alphas, mse_cv)
+    ax.set_title(f"min(MSE) = {np.amin(mse_cv):.4e} \npolynomial degree = {best_degree}", fontsize=17)
+    ax.set_xlabel(r"$\lambda$", fontsize=15)
+    ax.set_ylabel("MSE", fontsize=15)
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.5f'))
+    ax.tick_params(labelsize=12)
+    plt.savefig(dpi=300,
+        fname=f"part_e_lasso_{folds}foldcv_lambda_mse_{n_data_points}dpoints_{repetitions}reps.png")
 
-    plt.semilogx(alphas, mse_cv)
-    plt.title("Lasso with cross validation degree %d" %best_degree)
-    plt.xlabel("Lambda")
-    plt.ylabel("MSE")
-    plt.show()
-
-
+@ignore_warnings(category=ConvergenceWarning)
 def bootstrap():
     n_data_points = 400
     max_poly_degree = 10
@@ -100,7 +130,7 @@ def bootstrap():
 
     n_alphas = 20
     # alphas = np.linspace(-2, 1, n_alphas)
-    alphas = np.logspace(-4, 0, n_alphas)
+    alphas = np.logspace(-4, -1, n_alphas)
 
     mse_boot = np.zeros((n_alphas, n_degrees))
     variance_boot = np.zeros((n_alphas, n_degrees))
@@ -137,37 +167,46 @@ def bootstrap():
     
     X, Y = np.meshgrid(degrees, alphas)
     
-    fig0, ax0 = plt.subplots()
+    fig0, ax0 = plt.subplots(figsize=(10, 8))
     idx = np.unravel_index(np.argmin(mse_boot), mse_boot.shape)
-    mappable = ax0.contourf(X, Y, np.log10(mse_boot))
-    ax0.set_xlabel("Degrees")
-    ax0.set_ylabel("Lambdas")
-    ax0.set_title(f"MSE\nmin: lambda={alphas[idx[0]]}, degree={degrees[idx[1]]}")
+    mappable = ax0.contourf(X, Y, (mse_boot))
+    ax0.set_xlabel("Polynomial degree", fontsize=15)
+    ax0.set_ylabel(r"$\lambda$",fontsize=15)
+    ax0.set_title(f"min(MSE) = {np.amin(mse_boot):.4e} \nat lambda = {alphas[idx[0]]:.4e}, degree = {degrees[idx[1]]}", fontsize=17)
+    ax0.tick_params(labelsize=12)
     cbar = plt.colorbar(mappable)
-    # plt.show()
+    cbar.set_label(r"MSE", fontsize=15)
+    cbar.ax.tick_params(labelsize=12)
+    fig0.savefig(dpi=300,
+        fname=f"part_e_{n_bootstraps}boots_lambda_poly_mse_{n_data_points}dpoints_{repetitions}reps.png")
 
-    fig1, ax1 = plt.subplots()
-    mappable = ax1.contourf(X, Y, np.log10(variance_boot))
-    ax1.set_title("Variance")
-    ax1.set_xlabel("Degrees")
-    ax1.set_ylabel("Lambdas")
+    fig1, ax1 = plt.subplots(figsize=(10, 8))
+    mappable = ax1.contourf(X, Y, (variance_boot))
+    ax1.set_xlabel("Polynomial degree", fontsize=15)
+    ax1.set_ylabel(r"$\lambda$",fontsize=15)
+    ax1.tick_params(labelsize=12)
     cbar = plt.colorbar(mappable)
-    # cbar.set_label(r"$log_{10}$ error", fontsize=40)
-    # cbar.ax.tick_params(labelsize=30)
-    # plt.show()
+    cbar.set_label(r"Var", fontsize=15)
+    cbar.ax.tick_params(labelsize=12)
 
-    fig2, ax2 = plt.subplots()
-    mappable = ax2.contourf(X, Y, np.log10(bias_boot))
-    ax2.set_title("Bias")
-    ax2.set_xlabel("Degrees")
-    ax2.set_ylabel("Lambdas")
+    fig1.savefig(dpi=300,
+        fname=f"part_e_{n_bootstraps}boots_lambda_poly_var_{n_data_points}dpoints_{repetitions}reps.png")
+
+    fig2, ax2 = plt.subplots(figsize=(10, 8))
+    mappable = ax2.contourf(X, Y, (bias_boot))
+    ax2.set_xlabel("Polynomial degree", fontsize=15)
+    ax2.set_ylabel(r"$\lambda$",fontsize=15)
+    ax2.tick_params(labelsize=12)
     cbar = plt.colorbar(mappable)
-    # cbar.set_label(r"$log_{10}$ error", fontsize=40)
-    # cbar.ax.tick_params(labelsize=30)
-    plt.show()
+    cbar.set_label(r"Bias", fontsize=15)
+    cbar.ax.tick_params(labelsize=12)
+
+    fig2.savefig(dpi=300,
+        fname=f"part_e_{n_bootstraps}boots_lambda_poly_bias_{n_data_points}dpoints_{repetitions}reps.png")
+
 
 
 if __name__ == "__main__":
-    best_degree = contour()
-    cross_validation(best_degree)
+    # best_degree = contour()
+    # cross_validation(best_degree)
     bootstrap()
