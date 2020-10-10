@@ -120,34 +120,38 @@ def cross_validation(best_degree):
 @ignore_warnings(category=ConvergenceWarning)
 def bootstrap():
     n_data_points = 400
-    max_poly_degree = 10
+    max_poly_degree = 7
     noise_factor = 0.2
     n_bootstraps = 50
-    repetitions = 1 # Redo the experiment and average the data.
+    repetitions = 10 # Redo the experiment and average the data.
 
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
 
-    n_alphas = 20
+    n_alphas = 30
     # alphas = np.linspace(-2, 1, n_alphas)
-    alphas = np.logspace(-4, -1, n_alphas)
+    alphas = np.logspace(-8, -5, n_alphas)
 
     mse_boot = np.zeros((n_alphas, n_degrees))
     variance_boot = np.zeros((n_alphas, n_degrees))
     bias_boot = np.zeros((n_alphas, n_degrees))
+    total_time = 0
 
     for i in range(repetitions):
         """
         Repeat the experiment and average the produced values.
         """
-        print(f"repetition {i+1} of {repetitions}")
+        rep_time = time.time()
+        cum_alpha_time = 0
+        # print(f"repetition {i+1} of {repetitions}")
         q = Regression(n_data_points, noise_factor, max_poly_degree, split_scale=True)
         
         for j in range(n_alphas):
             """
             Loop over alphas.
             """
-            print(f"alpha {j+1} of {n_alphas}")
+            alpha_time = time.time()
+            # print(f"alpha {j+1} of {n_alphas}")
             for k in range(n_degrees):
                 """
                 Loop over degrees.
@@ -159,8 +163,19 @@ def bootstrap():
                 variance_boot[j, k] += variance_boot_tmp
                 bias_boot[j, k] += bias_boot_tmp
 
+            alpha_time = time.time() - alpha_time
+            cum_alpha_time += alpha_time
+            print(f"alpha {j+1} of {n_alphas} took: {alpha_time:.2f}s")
+            print(f"cumulative time for alpha {j+1}: {cum_alpha_time:.2f}s\n")
+
     
-    
+        rep_time = time.time() - rep_time
+        total_time += rep_time
+        print(f"repetition {i+1} of {repetitions} took: {rep_time:.2f}s")
+        print(f"cumulative time for repetition {repetitions}: {total_time:.2f}s\n")
+
+    print(f"total time {total_time:.2f}s")
+
     mse_boot /= repetitions
     variance_boot /= repetitions
     bias_boot /= repetitions
