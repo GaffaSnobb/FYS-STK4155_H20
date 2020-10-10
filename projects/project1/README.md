@@ -25,7 +25,7 @@ for current_degree in list_of_degrees:
 
 The final task, ```part_g.py```, is a bit different since it shall handle the terrain data. A new class, ```Terrain```, is introduced which inherits from ```Regression```, but the constructor is overwritten with a constructor which handles the terrain data from the file ```SRTM_data_Norway_1.tif```. Usage of ```Terrain``` is programmed in ```part_g.py``` and is in general identical to that of ```Regression```, save for the initialization,
 
-```
+``` Python
 q = Terrain(max_polynomial_degree, step_size_of_terrain_data)
 ```
 
