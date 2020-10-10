@@ -31,9 +31,12 @@ q = Terrain(max_polynomial_degree, step_size_of_terrain_data)
 
 ```part_g.py``` slices the terrain data to have an equal amount of x and y values for simplicity.
 
+### Testing
+A simple test is located in ```test.py``` which checks that the function ```ols``` does not alter the data if the design matrix input is an identity matrix. Run with ```pytest``` or directly ```python test.py```.
+
 
 ### Report
 The report is located in ```/doc```, and all figures for the report is located in ```/fig```.
 
 ### Compatibility
-All code is programmed in ```Python 3.8.5```. Earlier versions will probably work fine, but we guarantee full compatibility only with ```3.8.5```. Python packages used and their versions are: ```sklearn 0.23.2```, ```numpy 1.19.1```, ```matplotlib 3.3.1```, ```imageio 2.9.0```.
+All code is programmed in ```Python 3.8.5```. Earlier versions will probably work fine, but we guarantee full compatibility only with ```3.8.5```. Python packages used and their versions are: ```sklearn 0.23.2```, ```numpy 1.19.1```, ```matplotlib 3.3.1```, ```imageio 2.9.0```, ```pytest 6.1.1```.
