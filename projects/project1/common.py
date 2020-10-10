@@ -138,8 +138,8 @@ def ols(X, y, lambd=0):
 
 
 class Regression:
-    using_ridge = False
-    using_lasso = False
+    using_ridge = False # For suppressing repeated messages.
+    using_lasso = False # For suppressing repeated messages.
     def __init__(self, n_data_points, noise_factor, max_poly_degree,
             split_scale=True):
         """
@@ -175,7 +175,8 @@ class Regression:
         if split_scale: self._split_scale()
 
     
-    def cross_validation(self, degree, folds, lambd=0, alpha=0, shuffle=False):
+    def cross_validation(self, degree, folds, lambd=0, alpha=0,
+        shuffle=False):
         """
         Parameters
         ----------
@@ -194,6 +195,10 @@ class Regression:
         alpha : float
             Lasso regression parameter.  Defaults to 0 which means no
             Lasso regression.
+
+        shuffle : bool
+            Toggle shuffling of design matrix data on / off.  Defaults
+            to off.
 
         Returns
         -------
@@ -236,7 +241,7 @@ class Regression:
         
         for i in range(folds):
             """
-            Loop over all folds.  Split data sets accordingly
+            Loop over all folds.  Split data sets accordingly.
             """
             y_split = np.split(y, folds)
             y_validation = y_split.pop(i)
@@ -252,9 +257,16 @@ class Regression:
             X_validation = (X_validation - X_mean)/X_std
 
             if alpha == 0:
+                """
+                OLS or ridge regression.
+                """
                 beta = ols(X_training, y_training, lambd)
             else:
-                clf = Lasso(alpha=alpha, fit_intercept=False, normalize=True, max_iter=10000, tol=0.07)
+                """
+                Lasso regression.
+                """
+                clf = Lasso(alpha=alpha, fit_intercept=False,
+                    normalize=True, max_iter=10000, tol=0.07)
                 clf.fit(X_training, y_training)
                 beta = clf.coef_
             
@@ -273,7 +285,7 @@ class Regression:
 
     def standard_least_squares_regression(self, degree):
         """
-        Perform the standard least squares regression.
+        Perform the standard least squares regression (no resampling).
 
         Parameters
         ----------
@@ -295,6 +307,12 @@ class Regression:
 
         mse_test : float
             The mean squared error of the test set.
+
+        beta : numpy.ndarray
+            OLS solution vector.
+
+        var_beta : numpy.ndarray
+            The variance of each beta parameter.
         """
         self._split_scale()
         n_features = features(degree)
@@ -302,7 +320,7 @@ class Regression:
         X_test = self.X_test[:, :n_features] # Slice the correct number of features.
         
         beta = ols(X_train, self.y_train)
-        var_beta = self.noise_factor*np.diag(np.linalg.pinv(X_test.T@X_test))
+        var_beta = np.diag(np.linalg.pinv(X_test.T@X_test))
         y_model = X_train@beta
         y_predicted = X_test@beta
 
@@ -311,7 +329,8 @@ class Regression:
         mse_train = mean_squared_error(self.y_train, y_model)
         mse_test = mean_squared_error(self.y_test, y_predicted)
 
-        return r_score_train, mse_train, r_score_test, mse_test, beta, var_beta
+        return r_score_train, mse_train, r_score_test, mse_test, beta, \
+            var_beta
 
 
     def bootstrap(self, degree, n_bootstraps, lambd=0, alpha=0):
@@ -332,6 +351,10 @@ class Regression:
             Ridge regression parameter.  Defaults to 0 which means no
             ridge regression.
 
+        alpha : float
+            Lasso regression parameter.  Defaults to 0 which means no
+            lasso regression.
+
         Returns
         -------
         mse_boot : float
@@ -348,7 +371,7 @@ class Regression:
             Lasso regression.
         """
         
-        # For slicing the correct number of features.
+        # Slicing the correct number of features.
         n_features = features(degree)
         X_train = self.X_train[:, :n_features]
         X_test = self.X_test[:, :n_features]
@@ -356,12 +379,8 @@ class Regression:
         # Keep all the predictions for later calculations.
         n_test_data_points = self.X_test.shape[0]
         Y_predicted = np.empty((n_test_data_points, n_bootstraps))
+        
         self.r_score_boot = 0
-
-        # state = np.random.get_state()
-        # np.random.shuffle(X_train)
-        # np.random.set_state(state)
-        # np.random.shuffle(self.y_train)
 
         for b in range(n_bootstraps):
             """
@@ -370,8 +389,14 @@ class Regression:
             """
             X_resample, y_resample = resample(X_train, self.y_train)
             if alpha == 0:
+                """
+                Use OLS or ridge regression.
+                """
                 beta = ols(X_resample, y_resample, lambd)
             else:
+                """
+                Use lasso regression.
+                """
                 clf = Lasso(alpha=alpha, fit_intercept=False, normalize=True, max_iter=10000, tol=0.07)
                 clf.fit(X_resample, y_resample)
                 beta = clf.coef_
@@ -386,6 +411,7 @@ class Regression:
         mse_boot = mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
         variance_boot = np.mean(np.var(Y_predicted, axis=1))
         bias_boot = np.mean((self.y_test - np.mean(Y_predicted, axis=1))**2)
+        
         return mse_boot, variance_boot, bias_boot
 
 
@@ -393,7 +419,7 @@ class Regression:
         """
         Split the data into training and test sets.  Scale the data by
         subtracting the mean and dividing by the standard deviation,
-        both values from the training set.  Shuffle the values
+        both values from the training set.  Shuffle the values.
         """
         # Splitting.
         self.X_train, self.X_test, self.y_train, self.y_test = \

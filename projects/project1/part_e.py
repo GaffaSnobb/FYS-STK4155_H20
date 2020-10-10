@@ -2,18 +2,27 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-from numpy.core.numeric import cross
 from common import Regression
 from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
 @ignore_warnings(category=ConvergenceWarning)
 def contour():
+    """
+    Produce contour plot of MSE as a function of lasso regression
+    penalty parameter and polynomial degree.  Use cross validation
+    resampling and lasso regression.
+
+    Returns
+    -------
+    degrees[idx[1]] : float
+        The polynomial degree of the lowest MSE.
+    """
     n_data_points = 400
     max_poly_degree = 8
     noise_factor = 0.2
     folds = 5
-    repetitions = 20 # Redo the experiment and average the data.
+    repetitions = 10 # Redo the experiment and average the data.
 
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
@@ -66,16 +75,27 @@ def contour():
     plt.savefig(dpi=300,
         fname=f"part_e_lasso_{folds}foldcv_lambda_polydeg_mse_{n_data_points}dpoints_{repetitions}reps.png")
 
+    plt.show()
+
     return degrees[idx[1]]
 
 
 @ignore_warnings(category=ConvergenceWarning)
 def cross_validation(best_degree):
+    """
+    Plot MSE as a function of lasso regression penalty parameter.  Use
+    cross validation as resampling technique.
+
+    Parameters
+    ----------
+    best_degree : int
+        A polynomial degree.
+    """
     n_data_points = 400
     max_poly_degree = best_degree
     noise_factor = 0.2
     folds = 5
-    repetitions = 20 # Redo the experiment and average the data.
+    repetitions = 1 # Redo the experiment and average the data.
 
     n_alphas = 40
     alphas = np.logspace(-12, -6, n_alphas)
@@ -116,20 +136,25 @@ def cross_validation(best_degree):
     ax.tick_params(labelsize=12)
     plt.savefig(dpi=300,
         fname=f"part_e_lasso_{folds}foldcv_lambda_mse_{n_data_points}dpoints_{repetitions}reps.png")
+    plt.show()
 
 @ignore_warnings(category=ConvergenceWarning)
 def bootstrap():
+    """
+    Produce MSE, bias, and variance as a function of lasso regression
+    penalty parameter and polynomial degree.  Use bootstrap resampling
+    and lasso regression.
+    """
     n_data_points = 400
     max_poly_degree = 7
     noise_factor = 0.2
     n_bootstraps = 50
-    repetitions = 10 # Redo the experiment and average the data.
+    repetitions = 2 # Redo the experiment and average the data.
 
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
 
     n_alphas = 30
-    # alphas = np.linspace(-2, 1, n_alphas)
     alphas = np.logspace(-8, -5, n_alphas)
 
     mse_boot = np.zeros((n_alphas, n_degrees))
@@ -143,18 +168,17 @@ def bootstrap():
         """
         rep_time = time.time()
         cum_alpha_time = 0
-        # print(f"repetition {i+1} of {repetitions}")
         q = Regression(n_data_points, noise_factor, max_poly_degree, split_scale=True)
         
         for j in range(n_alphas):
             """
-            Loop over alphas.
+            Loop over lasso regression penalty parameters, alpha.
             """
             alpha_time = time.time()
-            # print(f"alpha {j+1} of {n_alphas}")
+            
             for k in range(n_degrees):
                 """
-                Loop over degrees.
+                Loop over polynomial degrees.
                 """
                 mse_boot_tmp, variance_boot_tmp, bias_boot_tmp = \
                     q.bootstrap(degrees[k], n_bootstraps, alpha=alphas[j])
@@ -219,9 +243,11 @@ def bootstrap():
     fig2.savefig(dpi=300,
         fname=f"part_e_{n_bootstraps}boots_lambda_poly_bias_{n_data_points}dpoints_{repetitions}reps.png")
 
+    plt.show()
+
 
 
 if __name__ == "__main__":
-    # best_degree = contour()
-    # cross_validation(best_degree)
+    best_degree = contour()
+    cross_validation(best_degree)
     bootstrap()

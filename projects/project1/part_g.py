@@ -39,10 +39,14 @@ class Terrain(Regression):
 
 
 def ridge_cv():
+    """
+    Plot MSE as a function of ridge regression penalty parameter.  Use
+    cross validation as resampling.
+    """
     max_poly_degree = 10
     folds = 5
     # Use 100 repetitions to get nice and smooth data.
-    repetitions = 10 # Redo the experiment and average the data.
+    repetitions = 50 # Redo the experiment and average the data.
 
     n_lambdas = 60
     lambdas = np.logspace(-16, 2, n_lambdas)
@@ -57,7 +61,8 @@ def ridge_cv():
         q = Terrain(max_poly_degree, step=110)
         for j in range(n_lambdas):
             mse_cv_tmp, mse_cv_training_tmp = \
-                q.cross_validation(degree=max_poly_degree, folds=folds, lambd=lambdas[j])
+                q.cross_validation(degree=max_poly_degree, folds=folds,
+                lambd=lambdas[j], shuffle=True)
             mse_cv[j] += mse_cv_tmp
             mse_cv_training[j] += mse_cv_training_tmp
             
@@ -74,15 +79,19 @@ def ridge_cv():
     ax.set_title("Cross validation with ridge regression", fontsize=17)
     ax.tick_params(labelsize=12)
     ax.legend(fontsize=17)
-    plt.savefig(dpi=300,
-        fname="part_g_terrain_cv_ridge_mse_vs_lambda_polydeg10_folds5_step110.pdf")
-    # plt.show()
+    # plt.savefig(dpi=300,
+    #     fname="part_g_terrain_cv_ridge_mse_vs_lambda_polydeg10_folds5_step110.pdf")
+    plt.show()
 
 
 def lasso_cv():
+    """
+    Plot MSE as a function of lasso regression penalty parameter.  Use
+    cross validation as resampling technique.
+    """
     poly_degree = 10
     folds = 5
-    # Use 100 repetitions to get nice and smooth data.
+    # Use 100 repetitions for smooth data.
     repetitions = 10 # Redo the experiment and average the data.
 
     n_alphas = 100
@@ -96,9 +105,14 @@ def lasso_cv():
         """
         print(f"repetition {i+1} of {repetitions}")
         q = Terrain(max_poly_degree=poly_degree, step=110)
+        
         for j in range(n_alphas):
+            """
+            Loop over lasso regression penalty parameters, alpha.
+            """
             mse_cv_tmp, mse_cv_training_tmp = \
-                q.cross_validation(degree=poly_degree, folds=folds, alpha=alphas[j])
+                q.cross_validation(degree=poly_degree, folds=folds,
+                alpha=alphas[j], shuffle=True)
             mse_cv[j] += mse_cv_tmp
             mse_cv_training[j] += mse_cv_training_tmp
             
@@ -115,9 +129,9 @@ def lasso_cv():
     ax.set_title("Cross validation with lasso regression", fontsize=17)
     ax.tick_params(labelsize=12)
     ax.legend(fontsize=17)
-    plt.savefig(dpi=300,
-        fname="part_g_terrain_cv_lasso_mse_vs_lambda_polydeg10_folds5_step110.pdf")
-    # plt.show()
+    # plt.savefig(dpi=300,
+    #     fname="part_g_terrain_cv_lasso_mse_vs_lambda_polydeg10_folds5_step110.pdf")
+    plt.show()
 
 
 def mse_r_plain_ols():
@@ -127,7 +141,7 @@ def mse_r_plain_ols():
     of data points.
     """
     max_poly_degree = 20
-    repetitions = 10    # Redo the experiment and average the data.
+    repetitions = 1    # Redo the experiment and average the data.
     
     degrees = np.arange(1, max_poly_degree+1, 1)
     n_degrees = len(degrees)
@@ -212,6 +226,9 @@ def mse_r_plain_ols():
 
 
 def mse_r_compare():
+    """
+    This data is not used for the report.
+    """
     max_poly_degree = 20
     repetitions = 10    # Redo the experiment and average the data.
     
@@ -255,6 +272,7 @@ def mse_r_compare():
             """
             print(f"repetition {i+1} of {repetitions}")
             q = Terrain(max_poly_degree, step=steps[k])
+            
             for j in range(n_degrees):
                 """
                 Loop over polynomial degrees.
@@ -288,7 +306,6 @@ def mse_r_compare():
         r_score_cv_avg /= repetitions
 
         ax0[k].plot(degrees, mse_test_avg, color="darkgrey", label="plain test")
-        # ax0[k].plot(degrees, mse_train_avg, color="gray", linestyle="dashed", label="plain train")
         ax0[k].plot(degrees, mse_boot_avg, color="dimgrey", linestyle="dashed", label="boot")
         ax0[k].plot(degrees, mse_cv_avg, color="black", linestyle="dotted", label="cv")
         ax0[k].set_title(f"Data points: {q.n_data_points}")
@@ -296,7 +313,6 @@ def mse_r_compare():
         ax0[k].set_yticks(ticks=[5e4, 6e4, 7e4])
         ax0[k].set_ylim(4.5e4, 7.7e4)
 
-        # ax1[k].plot(degrees, r_score_train_avg, color="gray", linestyle="dashed", label="plain train")
         ax1[k].plot(degrees, r_score_test_avg, color="darkgrey", label="plain test")
         ax1[k].plot(degrees, r_score_boot_avg, color="dimgrey", linestyle="dashed", label="boot")
         ax1[k].plot(degrees, r_score_cv_avg, color="black", linestyle="dotted", label="cv")
@@ -323,8 +339,8 @@ def mse_r_compare():
 
 
 if __name__ == "__main__":
-    # ridge_cv()
-    # lasso_cv()
-    # mse_r_plain_ols()
+    ridge_cv()
+    lasso_cv()
+    mse_r_plain_ols()
     mse_r_compare()
     pass
