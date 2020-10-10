@@ -1,1 +1,1 @@
-# Header?
+# FYS-STK4155 project 1 - Regression analysis and resampling methods
