@@ -6,11 +6,11 @@ Parameters for each part of the project is located in an individual .py file, na
 python part_x.py
 ```
 
-Note that the runtime is somewhat long for some of the programs, since all experiments are repeated and averaged. If you wish to use less time (but get worse data), please edit the desired file and change the ```repetitions``` parameter.
+Note that the runtime is somewhat long for some of the programs, since all experiments are repeated and averaged. If you wish to use less time (but get worse data), please edit the desired file and change the ```repetitions``` parameter. You can save more time by editing the number of ridge and lasso regression parameters where applicable. These parameters are named ```n_lambdas``` and ```n_alphas``` respectively. All present parameters are guaranteed to produce similar results to those you find in the report and in ```/fig```.
 
 
 ### Report
-The report is located in /doc, and all figures for the report is located in /fig.
+The report is located in ```/doc```, and all figures for the report is located in ```/fig```.
 
 ### Compatibility
-All code is programmed in Python 3.8.5. Earlier versions will probably work fine, but we guarantee full compatibility only with 3.8.5.
+All code is programmed in ```Python 3.8.5```. Earlier versions will probably work fine, but we guarantee full compatibility only with 3.8.5.
