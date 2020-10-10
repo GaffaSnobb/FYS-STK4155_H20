@@ -12,7 +12,7 @@ A file ```common.py``` contains all the common functionality for most of the tas
 
 ```common.py``` contains a class ```Regression``` where certain common elements for all regression techniques are gathered, like set-up of the design matrix and its parameters, and splitting and scaling of the data.
 
-General usage:
+General usage (this is handled by the programs for each subtask):
 
 ``` Python
 q = Regression(number_of_data_points, noise_factor, max_polynomial_degree)  # Design matrix is created, noise is added to data, data is split and scaled.
@@ -20,9 +20,16 @@ q = Regression(number_of_data_points, noise_factor, max_polynomial_degree)  # De
 for current_degree in list_of_degrees:
     return_values = q.standard_least_squares_regression(current_degree)
     return_values = q.bootstrap(current_degree, number_of_bootstrap_resamples)
-    return_values = q.cross_validation(current_degree, folds=folds[l])
+    return_values = q.cross_validation(current_degree, number_of_folds)
+```
+
+The final task, ```part_g.py```, is a bit different since it shall handle the terrain data. A new class, ```Terrain```, is introduced which inherits from ```Regression```, but the constructor is overwritten with a constructor which handles the terrain data from the file ```SRTM_data_Norway_1.tif```. Usage of ```Terrain``` is programmed in ```part_g.py``` and is in general identical to that of ```Regression```, save for the initialization,
 
 ```
+q = Terrain(max_polynomial_degree, step_size_of_terrain_data)
+```
+
+```part_g.py``` slices the terrain data to have an equal amount of x and y values for simplicity.
 
 
 ### Report
