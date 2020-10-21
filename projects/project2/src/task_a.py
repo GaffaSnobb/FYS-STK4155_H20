@@ -32,20 +32,24 @@ class _Solve:
         rest = n_rows%n_batches
         end_idx = n_rows - rest
 
-        batches = np.split(self.X[:end_idx], n_batches)
+        batch_indices = np.arange(0, n_rows-rest, n_rows//n_batches)
+        print(f"n_data_points: {self.n_data_points}")
+        print(f"n_batches: {n_batches}")
+        print(batch_indices)
 
-        if rest != 0:
-            """
-            Include the rest rows in the final batch.
-            """
-            tmp_rows = n_rows//n_batches + n_rows%n_batches
-            tmp_cols = self.poly_degree + 1
-            tmp = np.zeros(shape=(tmp_rows, tmp_cols))
-            # batches[-1] = np.concatenate(batches[-1].ravel(), self.X[end_idx:].ravel())
-            tmp[:n_rows//n_batches] = batches[-1]
+        # batches = np.split(self.X[:end_idx], n_batches)
 
-        print(self.X)
-        pass
+        # if rest != 0:
+        #     """
+        #     Include the rest rows in the final batch.
+        #     """
+        #     tmp_rows = n_rows//n_batches + n_rows%n_batches
+        #     tmp_cols = self.poly_degree + 1
+        #     tmp = np.zeros(shape=(tmp_rows, tmp_cols))
+        #     tmp[:n_rows//n_batches] = batches[-1]
+        #     tmp[n_rows//n_batches:] = self.X[end_idx:]
+
+
         # for epoch in range(n_epochs):
         #     """
         #     Loop over all epochs.
@@ -138,5 +142,5 @@ if __name__ == "__main__":
     # q.show()
 
     q = Example1D(n_data_points=10, poly_degree=3)
-    q.stochastic_gradient_descent(n_epochs=10, n_batches=9)
+    q.stochastic_gradient_descent(n_epochs=10, n_batches=2)
     pass
