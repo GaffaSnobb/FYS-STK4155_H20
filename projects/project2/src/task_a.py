@@ -1,49 +1,74 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 import common
 
+class _Solve:
+    def gradient_descent(self, n_gradient_iterations, gradient_step_size):
 
-def create_1d_design_matrix(x, n_data_points, poly_degree):
-    X = np.empty((n_data_points, poly_degree+1))
-    X[:, 0] = 1 # Intercept.
+        self.beta = np.zeros(self.poly_degree+1)
+        for _ in range(n_gradient_iterations):
+            gradient = self.X.T@(self.X@self.beta - self.y)*2/self.n_data_points
+            self.beta -= gradient_step_size*gradient
 
-    x = np.sort(x)
+    # def stochastic_gradient_descent(self, n_epochs):
+    #     for epoch in range(n_epochs):
+    #         for i in range(self.n_data_points):
+    #             random_index = np.random.randint(self.n_data_points)
+    #             xi = self.X[random_index:random_index+1]
+    #             yi = self.y[random_index:random_index+1]
+    #             gradients = 2 * xi.T @ ((xi @ theta)-yi)
+    #             eta = learning_schedule(epoch*self.n_data_points+i)
+    #             theta = theta - eta*gradients
 
-    for i in range(1, poly_degree+1):
-        X[:, i] = x**i
+class Example1D(_Solve):
+    def __init__(self, n_data_points, poly_degree):
+        self.n_data_points = n_data_points
+        self.poly_degree = poly_degree
+        self.n_features = common.features(self.poly_degree)
+        
+        self.x1 = np.random.uniform(0, 1, self.n_data_points)
 
-    return X
+        self.X = common.create_design_matrix_one_input_variable(self.x1,
+            self.n_data_points, self.poly_degree)
+        self.y = 2*self.x1 + 3*self.x1**2 + np.random.randn(self.n_data_points)
+
+    def show(self):
+        n_scope = 1000
+        scope = np.linspace(0, 1, n_scope)
+        res = common.polynomial_1d(scope, *self.beta)
+
+        popt, pcov = curve_fit(f=common.polynomial_1d, xdata=self.x1,
+            ydata=self.y, p0=[0]*(self.poly_degree+1))
+
+        print(f"curve_fit: {popt}")
+        print(f"gd: {self.beta}")
+
+        plt.plot(self.x1, self.y, "r.")
+        plt.plot(scope, res, label="gradient descent")
+        plt.plot(scope, common.polynomial_1d(scope, *popt), label="curve_fit")
+        plt.legend()
+        plt.show()
 
 
-def sgd():
+class Example2D(_Solve):
+    def __init__(self, n_data_points, poly_degree):
+        self.n_data_points = n_data_points
+        self.poly_degree = poly_degree
+        self.n_features = common.features(self.poly_degree)
+        
+        self.x1 = np.random.uniform(0, 1, self.n_data_points)
+        self.x2 = np.random.uniform(0, 1, self.n_data_points)
 
-    n_data_points = 10  # Number of data points.
-    poly_degree = 2
-    n_features = common.features(poly_degree)
-    n_gradient_iterations = 10
-    gradient_step_size = 0.1
-    
-    x1 = np.random.uniform(0, 1, n_data_points)
-    x2 = np.random.uniform(0, 1, n_data_points)
+        X = common.create_design_matrix(self.x1, self.x2, n_data_points, poly_degree)
+        y = common.franke_function(self.x1, self.x2)
+        beta = np.zeros(self.n_features)
 
-    # X = common.create_design_matrix(x1, x2, n_data_points, poly_degree)
-    # y = common.franke_function(x1, x2)
-    # beta = np.zeros(n_features)
-    X = create_1d_design_matrix(x1, n_data_points, poly_degree)
-    y = 4 + 3*x1 + np.random.randn(n_data_points)
-    
-    beta = np.zeros(poly_degree+1)
 
-    for _ in range(n_gradient_iterations):
-        gradient = X.T@(X@beta - y)*2/n_data_points
-        beta -= gradient_step_size*gradient
-
-    res = X@beta
-
-    plt.plot(x1, y, "r.")
-    plt.plot(np.sort(x1), res)
-    plt.show()
 
 
 if __name__ == "__main__":
-    sgd()
+    q = Example1D(n_data_points=100, poly_degree=3)
+    q.gradient_descent(n_gradient_iterations=1000, gradient_step_size=0.3)
+    q.show()
+    pass
