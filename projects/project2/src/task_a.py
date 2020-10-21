@@ -5,6 +5,17 @@ import common
 
 class _Solve:
     def gradient_descent(self, n_gradient_iterations, gradient_step_size):
+        """
+        Solve for beta using gradient descent.
+
+        Parameters
+        ----------
+        n_gradient_iterations : int
+            The number of iterations of the gradient descent.
+        
+        gradient_step_size : int
+            The step size of the gradient descent.  AKA learning rate.
+        """
 
         self.beta = np.zeros(self.poly_degree+1)
         for _ in range(n_gradient_iterations):
@@ -23,6 +34,17 @@ class _Solve:
 
 class Example1D(_Solve):
     def __init__(self, n_data_points, poly_degree):
+        """
+        Set up a 1D example for easy visualization of the process.
+
+        Parameters
+        ----------
+        n_data_points : int
+            The number of data points.
+
+        poly_degree : int
+            The polynomial degree.
+        """
         self.n_data_points = n_data_points
         self.poly_degree = poly_degree
         self.n_features = common.features(self.poly_degree)
@@ -34,6 +56,10 @@ class Example1D(_Solve):
         self.y = 2*self.x1 + 3*self.x1**2 + np.random.randn(self.n_data_points)
 
     def show(self):
+        """
+        Plot and show the fit data and compare with
+        scipy.optimize.curve_fit.
+        """
         n_scope = 1000
         scope = np.linspace(0, 1, n_scope)
         res = common.polynomial_1d(scope, *self.beta)
@@ -53,6 +79,17 @@ class Example1D(_Solve):
 
 class Example2D(_Solve):
     def __init__(self, n_data_points, poly_degree):
+        """
+        Set up a 2D example using Franke data.
+
+        Parameters
+        ----------
+        n_data_points : int
+            The number of data points.
+
+        poly_degree : int
+            The polynomial degree.
+        """
         self.n_data_points = n_data_points
         self.poly_degree = poly_degree
         self.n_features = common.features(self.poly_degree)
@@ -60,7 +97,8 @@ class Example2D(_Solve):
         self.x1 = np.random.uniform(0, 1, self.n_data_points)
         self.x2 = np.random.uniform(0, 1, self.n_data_points)
 
-        X = common.create_design_matrix(self.x1, self.x2, n_data_points, poly_degree)
+        X = common.create_design_matrix(self.x1, self.x2, n_data_points,
+            poly_degree)
         y = common.franke_function(self.x1, self.x2)
         beta = np.zeros(self.n_features)
 
