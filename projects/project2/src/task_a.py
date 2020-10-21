@@ -4,33 +4,60 @@ from scipy.optimize import curve_fit
 import common
 
 class _Solve:
-    def gradient_descent(self, n_gradient_iterations, gradient_step_size):
+    def gradient_descent(self, iterations, step_size):
         """
         Solve for beta using gradient descent.
 
         Parameters
         ----------
-        n_gradient_iterations : int
+        iterations : int
             The number of iterations of the gradient descent.
         
-        gradient_step_size : int
+        step_size : int
             The step size of the gradient descent.  AKA learning rate.
         """
-
-        self.beta = np.zeros(self.poly_degree+1)
-        for _ in range(n_gradient_iterations):
+        self.beta = np.zeros(self.poly_degree+1)    # Initial 'guess'.
+        for _ in range(iterations):
+            """
+            Loop over the gradient descents.
+            """
             gradient = self.X.T@(self.X@self.beta - self.y)*2/self.n_data_points
-            self.beta -= gradient_step_size*gradient
+            self.beta -= step_size*gradient
 
-    # def stochastic_gradient_descent(self, n_epochs):
-    #     for epoch in range(n_epochs):
-    #         for i in range(self.n_data_points):
-    #             random_index = np.random.randint(self.n_data_points)
-    #             xi = self.X[random_index:random_index+1]
-    #             yi = self.y[random_index:random_index+1]
-    #             gradients = 2 * xi.T @ ((xi @ theta)-yi)
-    #             eta = learning_schedule(epoch*self.n_data_points+i)
-    #             theta = theta - eta*gradients
+    def stochastic_gradient_descent(self, n_epochs, n_batches):
+        n_rows = self.X.shape[0]
+        print(n_rows)
+        print(n_rows%n_batches)
+
+        rest = n_rows%n_batches
+        end_idx = n_rows - rest
+
+        batches = np.split(self.X[:end_idx], n_batches)
+
+        if rest != 0:
+            """
+            Include the rest rows in the final batch.
+            """
+            tmp_rows = n_rows//n_batches + n_rows%n_batches
+            tmp_cols = self.poly_degree + 1
+            tmp = np.zeros(shape=(tmp_rows, tmp_cols))
+            # batches[-1] = np.concatenate(batches[-1].ravel(), self.X[end_idx:].ravel())
+            tmp[:n_rows//n_batches] = batches[-1]
+
+        print(self.X)
+        pass
+        # for epoch in range(n_epochs):
+        #     """
+        #     Loop over all epochs.
+        #     """
+        #     for i in range(self.n_data_points):
+        #         random_index = np.random.randint(self.n_data_points)
+        #         X = self.X[random_index:random_index+1]
+        #         y = self.y[random_index:random_index+1]
+        #         gradients = 2*X.T@((X@beta) - y)
+        #         eta = learning_schedule(epoch*self.n_data_points+i)
+        #         beta = beta - eta*gradients
+
 
 class Example1D(_Solve):
     def __init__(self, n_data_points, poly_degree):
@@ -106,7 +133,10 @@ class Example2D(_Solve):
 
 
 if __name__ == "__main__":
-    q = Example1D(n_data_points=100, poly_degree=3)
-    q.gradient_descent(n_gradient_iterations=1000, gradient_step_size=0.3)
-    q.show()
+    # q = Example1D(n_data_points=100, poly_degree=3)
+    # q.gradient_descent(iterations=1000, step_size=0.3)
+    # q.show()
+
+    q = Example1D(n_data_points=10, poly_degree=3)
+    q.stochastic_gradient_descent(n_epochs=10, n_batches=9)
     pass
