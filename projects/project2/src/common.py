@@ -108,7 +108,7 @@ def create_design_matrix_two_dependent_variables(x1, x2, N, degree):
         columns.
     """
     
-    X = np.empty((N, features(degree)))     # Data points x features.
+    X = np.empty((N, features(degree, 2)))     # Data points x features.
     X[:, 0] = 1 # Intercept.
     col_idx = 1 # For indexing the design matrix columns.
 
@@ -148,7 +148,7 @@ def create_design_matrix_one_dependent_variable(x, n_data_total, poly_degree):
     X : numpy.ndarray
         Design matrix.
     """
-    X = np.empty((n_data_total, poly_degree+1))
+    X = np.empty((n_data_total, features(poly_degree, 1)))
     X[:, 0] = 1 # Intercept.
 
     for i in range(1, poly_degree+1):
@@ -191,7 +191,7 @@ class _StatTools:
         step_size : int
             The step size of the gradient descent.  AKA learning rate.
         """
-        self.reset_init_beta()    # Reset beta for every new GD.
+        self.reset_state()    # Reset beta for every new GD.
         
         for _ in range(iterations):
             """
@@ -201,7 +201,8 @@ class _StatTools:
             self.beta -= step_size*gradient
 
 
-    def stochastic_gradient_descent(self, n_epochs, n_batches, lambd=0):
+    def stochastic_gradient_descent(self, n_epochs, n_batches,
+        input_step_size=None, lambd=0):
         """
         Solve for beta using stochastic gradient descent with momentum.
 
@@ -218,8 +219,12 @@ class _StatTools:
         lambd : float
             Ridge regression penalty parameter.  Defaults to 0 where no
             ridge penalty is applied.
+
+        input_step_size : NoneType, float
+            The gradient step size / learning rate.  Defaults to None
+            where a dynamic step size is used.
         """
-        self.reset_init_beta()    # Reset beta for every new SGD.
+        self.reset_state()    # Reset beta for every new SGD.
         
         rest = self.n_data_total%n_batches # The rest after equally splitting X into batches.
         n_data_per_batch = self.n_data_total//n_batches # Index step size.
@@ -238,14 +243,16 @@ class _StatTools:
             random_index = np.random.choice(batch_indices)
             X = self.X_train[random_index:random_index+n_data_per_batch]
             y = self.y_train[random_index:random_index+n_data_per_batch]
-            t = epoch*n_data_per_batch   # Does not need to be calculated in the inner loop.
+            t_step = epoch*n_data_per_batch   # Does not need to be calculated in the inner loop.
             
             for i in range(n_data_per_batch):
                 """
                 Loop over all data in each batch.
                 """
-                t += i
-                step_size = step_length(t=t, t0=5, t1=50)
+                t_step += i
+                if input_step_size is None:
+                    step_size = step_length(t=t_step, t0=5, t1=50)
+                else: step_size = input_step_size
 
                 gradient = X.T@((X@self.beta) - y)*2/n_data_per_batch
                 gradient += 2*lambd*self.beta   # Ridge addition.
@@ -264,15 +271,15 @@ class _StatTools:
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
 
         # Scaling.
-        # self.X_mean = np.mean(self.X_train)
-        # self.X_std = np.std(self.X_train)
-        # self.X_train = (self.X_train - self.X_mean)/self.X_std
-        # self.X_test = (self.X_test - self.X_mean)/self.X_std
+        self.X_mean = np.mean(self.X_train)
+        self.X_std = np.std(self.X_train)
+        self.X_train = (self.X_train - self.X_mean)/self.X_std
+        self.X_test = (self.X_test - self.X_mean)/self.X_std
 
 
-    def reset_init_beta(self):
+    def reset_state(self):
         """
-        Reset beta to the initial guess state.
+        Reset beta to the initial guess state and shuffle training data.
         """
         if self.init_beta is None:
             self.beta = np.zeros(self.n_features)
@@ -283,6 +290,12 @@ class _StatTools:
             assert success, msg
             
             self.beta = self.init_beta
+
+        state = np.random.get_state()
+        np.random.shuffle(self.X_train)
+        np.random.set_state(state)
+        np.random.shuffle(self.y_train)
+
 
     @property
     def mse(self):
