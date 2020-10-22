@@ -70,7 +70,7 @@ def visualize_fit_1d():
     
     gd_res = common.polynomial_1d(scope, *q.beta)
     gd_mse = common.mean_squared_error(q.y_train, q.X_train@q.beta)
-    q.reset_beta()
+    q.reset_init_beta()
     
     q.stochastic_gradient_descent(n_epochs=100, n_batches=20, lambd=0)
     sgd_res = common.polynomial_1d(scope, *q.beta)
@@ -93,14 +93,32 @@ def visualize_fit_1d():
     plt.legend()
     plt.show()
 
+
 def compare_1d():
-    q = Example1D(n_data_total=200, poly_degree=3)
-    q.stochastic_gradient_descent(n_epochs=100, n_batches=20, lambd=0)
+    n_data_total = 200
+    n_epochs = 100
+    n_repetitions = 10
+    poly_degree = 3
+    
+    q = Example1D(n_data_total, poly_degree)
+
+    batches = np.arange(1, n_data_total, 1)
+    n_batches_total = len(batches)
+
+    sgd_mse_train = np.empty(n_batches_total)
+    sgd_mse_test = np.empty(n_batches_total)
+    
+    for i in range(n_batches_total):
+        q.stochastic_gradient_descent(n_epochs, n_batches=batches[i], lambd=0)
+        sgd_mse_train[i], sgd_mse_test[i] = q.mse
+
+    plt.plot(batches, sgd_mse_test, label="test")
+    plt.plot(batches, sgd_mse_train, label="train")
+    plt.legend()
+    plt.show()
+
 
 if __name__ == "__main__":
-    # q = Example1D(n_data_total=100, poly_degree=3)
-    # q.gradient_descent(iterations=1000, step_size=0.3)
-    # q.show()
     # compare_1d()
     visualize_fit_1d()
     pass
