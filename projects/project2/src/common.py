@@ -190,6 +190,7 @@ class _StatTools:
 
         self._split_scale()
 
+
     def gradient_descent(self, iterations, step_size):
         """
         Solve for beta using gradient descent.
@@ -272,7 +273,7 @@ class _StatTools:
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
 
         # Scaling.
-        X_mean = np.mean(self.X_train)
-        X_std = np.std(self.X_train)
-        self.X_train = (self.X_train - X_mean)/X_std
-        self.X_test = (self.X_test - X_mean)/X_std
+        # self.X_mean = np.mean(self.X_train)
+        # self.X_std = np.std(self.X_train)
+        # self.X_train = (self.X_train - self.X_mean)/self.X_std
+        # self.X_test = (self.X_test - self.X_mean)/self.X_std

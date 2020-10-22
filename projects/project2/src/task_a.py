@@ -92,6 +92,7 @@ if __name__ == "__main__":
     n_scope = 1000
     scope = np.linspace(0, 1, n_scope)
     res = common.polynomial_1d(scope, *q.beta)
+    # q.x1 = (q.x1 - q.X_mean)/q.X_std
 
     popt, pcov = curve_fit(f=common.polynomial_1d, xdata=q.x1,
         ydata=q.y, p0=[0]*(q.poly_degree+1))
@@ -99,9 +100,10 @@ if __name__ == "__main__":
     print(f"curve_fit: {popt}")
     print(f"gd: {q.beta}")
 
+    plt.title("with scaling")
     plt.plot(q.x1, q.y, "r.")
-    plt.plot(scope, res, label="gradient descent")
-    plt.plot(scope, common.polynomial_1d(scope, *popt), label="curve_fit")
+    plt.plot(scope, res, label="SGD")
+    plt.plot(scope, common.polynomial_1d(scope, *popt), label="scipy.curve_fit")
     plt.legend()
     plt.show()
     pass
