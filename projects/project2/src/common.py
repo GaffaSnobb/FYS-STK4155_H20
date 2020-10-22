@@ -174,19 +174,7 @@ class _StatTools:
         self.n_data_total = n_data_total
         self.poly_degree = poly_degree
         self.n_features = features(self.poly_degree, self.n_dependent_variables)
-
-        if init_beta is None:
-            """
-            Initial guess of beta.
-            """
-            self.beta = np.zeros(self.n_features)
-        else:
-            msg = "Initial beta value array must be of length"
-            msg += f" {self.n_features}, got {len(init_beta)}."
-            success = len(init_beta) == (self.n_features)
-            assert success, msg
-            
-            self.beta = init_beta
+        self.init_beta = init_beta
 
         self._split_scale()
 
@@ -203,6 +191,7 @@ class _StatTools:
         step_size : int
             The step size of the gradient descent.  AKA learning rate.
         """
+        self.reset_init_beta()    # Reset beta for every new GD.
         
         for _ in range(iterations):
             """
@@ -230,6 +219,8 @@ class _StatTools:
             Ridge regression penalty parameter.  Defaults to 0 where no
             ridge penalty is applied.
         """
+        self.reset_init_beta()    # Reset beta for every new SGD.
+        
         rest = self.n_data_total%n_batches # The rest after equally splitting X into batches.
         n_data_per_batch = self.n_data_total//n_batches # Index step size.
         # Indices of X corresponding to start point of the batches.
@@ -277,3 +268,25 @@ class _StatTools:
         # self.X_std = np.std(self.X_train)
         # self.X_train = (self.X_train - self.X_mean)/self.X_std
         # self.X_test = (self.X_test - self.X_mean)/self.X_std
+
+
+    def reset_init_beta(self):
+        """
+        Reset beta to the initial guess state.
+        """
+        if self.init_beta is None:
+            self.beta = np.zeros(self.n_features)
+        else:
+            msg = "Initial beta value array must be of length"
+            msg += f" {self.n_features}, got {len(self.init_beta)}."
+            success = len(self.init_beta) == (self.n_features)
+            assert success, msg
+            
+            self.beta = self.init_beta
+
+    @property
+    def mse(self):
+        mse_train = mean_squared_error(self.y_train, self.X_train@self.beta)
+        mse_test = mean_squared_error(self.y_test, self.X_test@self.beta)
+
+        return mse_train, mse_test
