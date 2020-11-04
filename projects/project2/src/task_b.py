@@ -1,25 +1,49 @@
 import numpy as np
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from tensorflow.keras.utils import to_categorical
+from common import _StatTools
 
 
 def sigmoid(x):
     return 1/(1 + np.exp(-x))
 
-class FFNN:
+def dsigmoid(x):
+    return np.exp(-x)/(np.exp(-x) + 1)**2
+
+
+class FFNN(_StatTools):
     """
     Class implementation of a feedforward neural network.
     """
     def __init__(self):
-        self.X = np.zeros((2, 2))
-        self.y = np.zeros((2, 2))
-        
-        self.n_hidden_neurons = 5
+        digits = datasets.load_digits()
+        self.X = digits.images
+        self.y = digits.target
+        print(self.X.shape)
         self.n_data_total = self.X.shape[0] # Total number of data points.
+        self.X = self.X.reshape(self.n_data_total, -1)
+        print(self.X.shape)
+        
         self.n_features = self.X.shape[1]   # The number of features.
-        self.epochs = 5
-        self.batch_size = 5     # Size of each minibatch.
-        self.n_categories = 10  # Explain?
+        self.n_hidden_neurons = 50
+        self.epochs = 50
+        self.batch_size = 20        # Size of each minibatch.
+        self.n_categories = 10      # Number of output categories. 0, 1, 2, ...
         self.learning_rate = 0.1    # Aka eta.
         self.lambd = 0
+
+        self.X_train, self.X_test, self.y_train, self.y_test = \
+            train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
+
+        print(f"y_train: {self.y_train.shape}")
+
+        self.y_train = to_categorical(self.y_train)
+        self.y_test = to_categorical(self.y_test)
+
+        print(f"y_train: {self.y_train.shape}")
+
         
         # Weights and biases for the hidden layers.
         self.hidden_weights = np.random.randn(self.n_features, self.n_hidden_neurons)
@@ -32,26 +56,29 @@ class FFNN:
 
     def feedforward(self):
         """
-        Perform one feedforward step.
+        Perform one feedforward. a_hidden is a weighted sum of inputs
+        for the hidden layer with added bias.  z_output is a weighted
+        sum of inputs for the output layer with added bias.
         """
-        # a_hidden is a weighted sum of inputs for the hidden layer with added bias.
-        # z_output is a weighted sum of inputs for the output layer with added bias.
         self.a_hidden = sigmoid(self.X_minibatch@self.hidden_weights + self.hidden_biases)
-        z_output = np.exp(np.matmul(self.a_hidden, self.output_weights) + self.output_biases)
+        z_output = np.exp(self.a_hidden@self.output_weights + self.output_biases)
         self.probabilities = z_output/np.sum(z_output, axis=1, keepdims=True)
 
     
     def backpropagation(self):
-        error_output = self.probabilities - self.y_minibatch
-        error_hidden = np.matmul(error_output, self.output_weights.T)*self.a_hidden*(1 - self.a_hidden)
+        error_output = self.probabilities - self.y_minibatch    # Loss.
+        error_hidden = error_output@self.output_weights.T*self.a_hidden*(1 - self.a_hidden) # Hard coded Sigmoid derivative?
 
-        output_weights_gradient = np.matmul(self.a_hidden.T, error_output)
+        output_weights_gradient = self.a_hidden.T@error_output
         output_bias_gradient = np.sum(error_output, axis=0)
 
-        hidden_weights_gradient = np.matmul(self.X_minibatch.T, error_hidden)
+        hidden_weights_gradient = self.X_minibatch.T@error_hidden
         hidden_biases_gradient = np.sum(error_hidden, axis=0)
 
         if self.lambd > 0:
+            """
+            Whats happening here?  Regularization.
+            """
             output_weights_gradient += self.lambd*self.output_weights
             hidden_weights_gradient += self.lambd*self.hidden_weights
 
@@ -65,8 +92,9 @@ class FFNN:
         """
         Train the neural network.
         """
-        data_indices = np.arange(self.n_data_total)
-        iterations = self.n_data_total // self.batch_size
+        data_indices = np.arange(self.X_train.shape[0])
+        iterations = self.n_data_total//self.batch_size
+        print(f"iterations: {iterations}")
 
         for _ in range(self.epochs):
             """
@@ -80,17 +108,34 @@ class FFNN:
                 minibatch_indices = np.random.choice(data_indices,
                     size=self.batch_size, replace=True)
 
-                self.X_minibatch = self.X[minibatch_indices]
-                self.y_minibatch = self.y[minibatch_indices]
+                self.X_minibatch = self.X_train[minibatch_indices]
+                self.y_minibatch = self.y_train[minibatch_indices]
 
                 self.feedforward()
                 self.backpropagation()
 
 
+    def predict(self, X):
+        self.X_minibatch = X
+        self.feedforward()
+        print(np.argmax(self.probabilities, axis=1))
+        print(self.probabilities.shape)
+        print(np.argmax(self.y_test, axis=1))
+        print(self.y_test.shape)
+        # print(np.argmax(self.probabilities, axis=1).shape)
+        # print(self.probabilities)
+        # print(self.probabilities.shape)
+        print(accuracy_score(np.argmax(self.probabilities, axis=1), np.argmax(self.y_test, axis=1)))
+        # print(len(self.probabilities))
+        # print(q.X_train.shape)
+
+
+# def predict(X):
+#     probabilities = feed_forward(X)
+#     return np.argmax(probabilities, axis=1)
+
 if __name__ == "__main__":
     np.random.seed(1337)
     q = FFNN()
-    q.X_minibatch = q.X
-
-    q.feedforward()
-    print(q.probabilities)
+    q.train()
+    q.predict(q.X_test)
