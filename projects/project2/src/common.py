@@ -200,7 +200,8 @@ class _StatTools:
             """
             Loop over the gradient descents.
             """
-            gradient = self.X.T@(self.X@self.beta - self.y)*2/self.n_data_total
+            gradient = self.X_train.T@(self.X_train@self.beta - self.y_train)
+            gradient *= 2/self.n_data_total
             self.beta -= step_size*gradient
 
         self.stop_timing()
