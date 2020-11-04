@@ -1,3 +1,5 @@
+import time
+import sys
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -192,6 +194,7 @@ class _StatTools:
             The step size of the gradient descent.  AKA learning rate.
         """
         self.reset_state()    # Reset beta for every new GD.
+        self.start_timing()
         
         for _ in range(iterations):
             """
@@ -199,6 +202,8 @@ class _StatTools:
             """
             gradient = self.X.T@(self.X@self.beta - self.y)*2/self.n_data_total
             self.beta -= step_size*gradient
+
+        self.stop_timing()
 
 
     def stochastic_gradient_descent(self, n_epochs, n_batches,
@@ -225,6 +230,7 @@ class _StatTools:
             where a dynamic step size is used.
         """
         self.reset_state()    # Reset beta for every new SGD.
+        self.start_timing()
         
         rest = self.n_data_total%n_batches # The rest after equally splitting X into batches.
         n_data_per_batch = self.n_data_total//n_batches # Index step size.
@@ -236,20 +242,23 @@ class _StatTools:
 
         for epoch in range(n_epochs):
             """
-            Loop over epochs.  For each loop, a random start index
-            defined by the number of batches is drawn.  This chooses a
-            random batch by slicing the design matrix.
+            Loop over epochs.
             """
-            random_index = np.random.choice(batch_indices)
-            X = self.X_train[random_index:random_index+n_data_per_batch]
-            y = self.y_train[random_index:random_index+n_data_per_batch]
             t_step = epoch*n_data_per_batch   # Does not need to be calculated in the inner loop.
             
-            for i in range(n_data_per_batch):
+            # for i in range(n_data_per_batch):
+            for i in range(n_batches):
                 """
-                Loop over all data in each batch.
+                Loop over all data in each batch.  For each loop, a
+                random start index defined by the number of batches,
+                is drawn.  This chooses a random batch by slicing the
+                design matrix.
                 """
+                random_index = np.random.choice(batch_indices)
+                X = self.X_train[random_index:random_index+n_data_per_batch]
+                y = self.y_train[random_index:random_index+n_data_per_batch]
                 t_step += i
+                
                 if input_step_size is None:
                     step_size = step_length(t=t_step, t0=5, t1=50)
                 else: step_size = input_step_size
@@ -258,6 +267,8 @@ class _StatTools:
                 gradient += 2*lambd*self.beta   # Ridge addition.
                 momentum = momentum_parameter*momentum + step_size*gradient
                 self.beta -= momentum
+
+        self.stop_timing()
 
 
     def _split_scale(self):
@@ -271,10 +282,10 @@ class _StatTools:
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
 
         # Scaling.
-        self.X_mean = np.mean(self.X_train)
-        self.X_std = np.std(self.X_train)
-        self.X_train = (self.X_train - self.X_mean)/self.X_std
-        self.X_test = (self.X_test - self.X_mean)/self.X_std
+        # self.X_mean = np.mean(self.X_train)
+        # self.X_std = np.std(self.X_train)
+        # self.X_train = (self.X_train - self.X_mean)/self.X_std
+        # self.X_test = (self.X_test - self.X_mean)/self.X_std
 
 
     def reset_state(self):
@@ -296,6 +307,14 @@ class _StatTools:
         np.random.set_state(state)
         np.random.shuffle(self.y_train)
 
+
+    def start_timing(self):
+        self.stopwatch = time.time()
+
+
+    def stop_timing(self):
+        self.stopwatch = time.time() - self.stopwatch
+        print(f"{sys._getframe().f_back.f_code.co_name} time: {self.stopwatch:.4f} s")
 
     @property
     def mse(self):
