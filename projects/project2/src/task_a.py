@@ -297,6 +297,6 @@ if __name__ == "__main__":
     # mse_vs_batches_no_ridge()
     # mse_vs_step_size_no_ridge()
     # mse_vs_step_size_vs_batches_no_ridge()
-    mse_vs_lambda_vs_step_size_ridge()
-    # visualize_fit_1d()
+    # mse_vs_lambda_vs_step_size_ridge()
+    visualize_fit_1d()
     pass
