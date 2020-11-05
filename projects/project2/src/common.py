@@ -160,7 +160,7 @@ def create_design_matrix_one_dependent_variable(x, n_data_total, poly_degree):
 
 
 class _StatTools:
-    def __init__(self, n_data_total, poly_degree, init_beta=None):
+    def __init__(self, n_data_total, poly_degree, init_beta=None, verbose=False):
         """
         Parameters
         ----------
@@ -172,11 +172,15 @@ class _StatTools:
 
         init_beta : NoneType, numpy.ndarray
             Initial beta values.  Defaults to None where 0 is used.
+
+        verbose : bool
+            Toggle verbose mode on / off.
         """
         self.n_data_total = n_data_total
         self.poly_degree = poly_degree
         self.n_features = features(self.poly_degree, self.n_dependent_variables)
         self.init_beta = init_beta
+        self.verbose = verbose
 
         self._split_scale()
 
@@ -194,7 +198,7 @@ class _StatTools:
             The step size of the gradient descent.  AKA learning rate.
         """
         self.reset_state()    # Reset beta for every new GD.
-        self.start_timing()
+        if self.verbose: self.start_timing()
         
         for _ in range(iterations):
             """
@@ -204,7 +208,7 @@ class _StatTools:
             gradient *= 2/self.n_data_total
             self.beta -= step_size*gradient
 
-        self.stop_timing()
+        if self.verbose: self.stop_timing()
 
 
     def stochastic_gradient_descent(self, n_epochs, n_batches,
@@ -231,7 +235,7 @@ class _StatTools:
             where a dynamic step size is used.
         """
         self.reset_state()    # Reset beta for every new SGD.
-        self.start_timing()
+        if self.verbose: self.start_timing()
         
         rest = self.n_data_total%n_batches # The rest after equally splitting X into batches.
         n_data_per_batch = self.n_data_total//n_batches # Index step size.
@@ -269,7 +273,7 @@ class _StatTools:
                 momentum = momentum_parameter*momentum + step_size*gradient
                 self.beta -= momentum
 
-        self.stop_timing()
+        if self.verbose: self.stop_timing()
 
 
     def _split_scale(self):
