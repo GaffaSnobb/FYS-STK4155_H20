@@ -132,10 +132,7 @@ if __name__ == "__main__":
     np.random.seed(1337)
     q = FFNN()
 
-    learning_rates = np.logspace(-5, 0, 8)
-
-    for learning_rate in learning_rates:
-
+    for learning_rate in np.logspace(-5, 0, 8):
         q.train_neural_network(learning_rate)
         score = q.predict(q.X_test)
         print(f"score: {score} for learning rate: {learning_rate}")
