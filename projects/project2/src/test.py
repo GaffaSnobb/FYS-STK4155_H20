@@ -1,8 +1,6 @@
 import numpy as np
-from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 import common
-from task_b import FFNN, sigmoid
 
 class Example2D(common._StatTools):
     def __init__(self, n_data_total, poly_degree, init_beta=None):
@@ -28,7 +26,7 @@ class Example2D(common._StatTools):
         super(Example2D, self).__init__(n_data_total, poly_degree, init_beta)
 
 
-class FFNNSingle(FFNN):
+class FFNNSingle(common.FFNN):
     def __init__(self, verbose=False):
         self.n_hidden_neurons = 50
         super(FFNNSingle, self).__init__(hidden_layer_sizes=(50,), verbose=verbose)
@@ -77,7 +75,7 @@ class FFNNSingle(FFNN):
         """
         Perform one feedforward.
         """
-        self.a_hidden = sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
+        self.a_hidden = common.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
         self.z_output = np.exp(self.a_hidden@self.output_weights + self.output_biases)
         self.probabilities = self.z_output/np.sum(self.z_output, axis=1, keepdims=True)
 
@@ -128,7 +126,7 @@ def test_design_matrix_dimensions():
 tol = 1e-10
 
 np.random.seed(1337)
-q1 = FFNN()
+q1 = common.FFNN()
 q1._initial_state()
 q1.X_selection = q1.X_train
 q1.feedforward()
@@ -187,7 +185,7 @@ def test_initial_state_and_feedforward_output_neuron_activation():
 
 
 np.random.seed(1337)
-q3 = FFNN()
+q3 = common.FFNN()
 q3._initial_state()
 q3.X_selection = q3.X_train
 q3.y_selection = q3.y_train
