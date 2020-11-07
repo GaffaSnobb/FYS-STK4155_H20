@@ -26,10 +26,16 @@ import common
         
 #         # super(FFNNRegression, self).__init__(n_data_total, poly_degree, init_beta)
 
-if __name__ == "__main__":
-    digits = datasets.load_digits()
-    X = digits.images
-    y = digits.target
+
+def neural_network_franke():
+    n_data_total = 200
+    poly_degree = 3
+
+    x1 = np.random.uniform(0, 1, n_data_total)
+    x2 = np.random.uniform(0, 1, n_data_total)
+    X = common.create_design_matrix_two_dependent_variables(x1,
+        x2, n_data_total, poly_degree)
+    y = common.franke_function(x1, x2)
     
     q1 = common.FFNN(X=X, y=y, hidden_layer_sizes=(50, 20, 20),
         hidden_layer_activation_function=common.sigmoid, verbose=True)
@@ -37,6 +43,21 @@ if __name__ == "__main__":
     q1.train_neural_network(learning_rate=0.007)
     score = q1.predict(q1.X_test)
     print(score)
+
+
+if __name__ == "__main__":
+    # digits = datasets.load_digits()
+    # X = digits.images
+    # y = digits.target
+    
+    # q1 = common.FFNN(X=X, y=y, hidden_layer_sizes=(50, 20, 20),
+    #     hidden_layer_activation_function=common.sigmoid, verbose=True)
+    
+    # q1.train_neural_network(learning_rate=0.007)
+    # score = q1.predict(q1.X_test)
+    # print(score)
+
+    neural_network_franke()
 
     # for learning_rate in np.logspace(-5, 0, 8):
     #     q1.train_neural_network_single(learning_rate)
