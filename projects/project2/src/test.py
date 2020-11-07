@@ -29,6 +29,11 @@ class Example2D(common._StatTools):
 
 
 class FFNNSingle(FFNN):
+    def __init__(self, verbose=False):
+        self.n_hidden_neurons = 50
+        super(FFNNSingle, self).__init__(hidden_layer_sizes=(50,), verbose=verbose)
+
+
     def predict_single(self, X):
         self.X_minibatch = X
         self.feedforward_single()
