@@ -34,15 +34,6 @@ class FFNNSingle(FFNN):
         super(FFNNSingle, self).__init__(hidden_layer_sizes=(50,), verbose=verbose)
 
 
-    def predict_single(self, X):
-        self.X_minibatch = X
-        self.feedforward_single()
-        score = accuracy_score(np.argmax(self.probabilities, axis=1), self.y_test)
-        # print(np.argmax(self.probabilities, axis=1).shape)
-        # print(np.argmax(self.probabilities, axis=1))
-        return score
-
-
     def _initial_state_single(self):
         """
         Set the system to the correct state before training starts.
@@ -64,24 +55,17 @@ class FFNNSingle(FFNN):
 
     def _backpropagation_single(self):
         """
-
+        Perform one backpropagation.
         """
-        self.output_error = self.probabilities - self.y_minibatch    # Loss.
+        self.output_error = self.probabilities - self.y_selection    # Loss / cost.
         self.hidden_error = self.output_error@self.output_weights.T
         self.hidden_error *= self.a_hidden*(1 - self.a_hidden) # Hard coded Sigmoid derivative.
 
         output_weights_gradient = self.a_hidden.T@self.output_error
         self.output_bias_gradient = np.sum(self.output_error, axis=0)
 
-        hidden_weights_gradient = self.X_minibatch.T@self.hidden_error
+        hidden_weights_gradient = self.X_selection.T@self.hidden_error
         hidden_biases_gradient = np.sum(self.hidden_error, axis=0)
-
-        if self.lambd > 0:
-            """
-            Regularization.
-            """
-            output_weights_gradient += self.lambd*self.output_weights
-            hidden_weights_gradient += self.lambd*self.hidden_weights
 
         self.output_weights -= self.learning_rate*output_weights_gradient
         self.output_biases -= self.learning_rate*self.output_bias_gradient
@@ -93,7 +77,7 @@ class FFNNSingle(FFNN):
         """
         Perform one feedforward.
         """
-        self.a_hidden = sigmoid(self.X_minibatch@self.hidden_weights + self.hidden_biases)
+        self.a_hidden = sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
         self.z_output = np.exp(self.a_hidden@self.output_weights + self.output_biases)
         self.probabilities = self.z_output/np.sum(self.z_output, axis=1, keepdims=True)
 
@@ -122,13 +106,11 @@ class FFNNSingle(FFNN):
                 minibatch_indices = np.random.choice(data_indices,
                     size=self.batch_size, replace=True)
 
-                self.X_minibatch = self.X_train[minibatch_indices]
-                self.y_minibatch = self.y_train[minibatch_indices]
+                self.X_selection = self.X_train[minibatch_indices]
+                self.y_selection = self.y_train[minibatch_indices]
 
                 self.feedforward_single()
                 self._backpropagation_single()
-            #     break
-            # break
 
         if self.verbose: self.stop_timing()
 
@@ -148,13 +130,13 @@ tol = 1e-10
 np.random.seed(1337)
 q1 = FFNN()
 q1._initial_state()
-q1.X_minibatch = q1.X_train
+q1.X_selection = q1.X_train
 q1.feedforward()
 
 np.random.seed(1337)
 q2 = FFNNSingle()
 q2._initial_state_single()
-q2.X_minibatch = q2.X_train
+q2.X_selection = q2.X_train
 q2.feedforward_single()
 
 
@@ -207,8 +189,8 @@ def test_initial_state_and_feedforward_output_neuron_activation():
 np.random.seed(1337)
 q3 = FFNN()
 q3._initial_state()
-q3.X_minibatch = q3.X_train
-q3.y_minibatch = q3.y_train
+q3.X_selection = q3.X_train
+q3.y_selection = q3.y_train
 q3.learning_rate = 0.1
 q3.lambd = 0
 q3.feedforward()
@@ -217,8 +199,8 @@ q3._backpropagation()
 np.random.seed(1337)
 q4 = FFNNSingle()
 q4._initial_state_single()
-q4.X_minibatch = q4.X_train
-q4.y_minibatch = q4.y_train
+q4.X_selection = q4.X_train
+q4.y_selection = q4.y_train
 q4.learning_rate = 0.1
 q4.lambd = 0
 q4.feedforward_single()
