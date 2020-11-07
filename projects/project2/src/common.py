@@ -2,7 +2,6 @@ import time
 import sys
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn import datasets
 from sklearn.metrics import accuracy_score
 
 def polynomial_1d(x, *beta):
@@ -394,7 +393,7 @@ class FFNN(_StatTools):
     """
     Class implementation of a feedforward neural network.
     """
-    def __init__(self, X, y, hidden_layer_sizes=(50,),
+    def __init__(self, X, y, hidden_layer_sizes=(50,), n_categories=10,
         hidden_layer_activation_function=sigmoid, verbose=False):
         """
         verbose : bool
@@ -421,13 +420,12 @@ class FFNN(_StatTools):
         self.y = y
         self.n_data_total = self.X.shape[0] # Total number of data points.
         self.X = self.X.reshape(self.n_data_total, -1)
-
         self.n_features = self.X.shape[1]   # The number of features.
         
         self.n_epochs = 50
         self.batch_size = 20        # Size of each minibatch.
-        self.n_categories = 10      # Number of output categories. 0, 1, 2, ...
-
+        # self.n_categories = 10      # Number of output categories.
+        self.n_categories = n_categories
         self.verbose = verbose
 
 
