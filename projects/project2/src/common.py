@@ -394,7 +394,8 @@ class FFNN(_StatTools):
     """
     Class implementation of a feedforward neural network.
     """
-    def __init__(self, hidden_layer_sizes=(50,), verbose=False):
+    def __init__(self, X, y, hidden_layer_sizes=(50,),
+        hidden_layer_activation_function=sigmoid, verbose=False):
         """
         verbose : bool
             Toggle verbose mode on / off.
@@ -408,9 +409,16 @@ class FFNN(_StatTools):
             print(msg)
             sys.exit()
 
-        digits = datasets.load_digits()
-        self.X = digits.images
-        self.y = digits.target
+        if callable(hidden_layer_activation_function):
+            self.hidden_layer_activation_function = hidden_layer_activation_function
+        else:
+            msg = f"hidden_layer_activation_function must be callable!"
+            msg += f" Got {type(hidden_layer_activation_function)}."
+            print(msg)
+            sys.exit()
+
+        self.X = X
+        self.y = y
         self.n_data_total = self.X.shape[0] # Total number of data points.
         self.X = self.X.reshape(self.n_data_total, -1)
 
@@ -440,11 +448,11 @@ class FFNN(_StatTools):
             layers.
             """
             self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i] + self.hidden_biases[i]   # No expontential?
-            self.neuron_input[i + 1] = sigmoid(self.neuron_activation[i + 1])
+            self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
 
         # self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
         self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
-        self.neuron_input[-1] = sigmoid(self.neuron_activation[-1]) # CURRENTLY NOT IN USE
+        # self.neuron_input[-1] = sigmoid(self.neuron_activation[-1]) # CURRENTLY NOT IN USE
         self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
 
 
