@@ -141,17 +141,9 @@ class FFNNSingle(FFNN):
 def test_multilayer_with_one_layer():
     np.random.seed(1337)
     q1 = FFNN()
-
     q1._initial_state()
-    # print(q1.hidden_biases)
-    # print(q1.hidden_weights)
-    # print(q1.output_biases)
-    # print(type(q1.output_weights))
-
     q1.X_minibatch = q1.X_test
     q1.feedforward()
-    # print(q1.neuron_input[1].shape)
-    print(q1.neuron_activation[-1].shape)
 
     # q1.train_neural_network()
     # score = q1.predict(q1.X_test)
@@ -159,17 +151,31 @@ def test_multilayer_with_one_layer():
 
     np.random.seed(1337)
     q2 = FFNNSingle()
-
     q2._initial_state_single()
-    # print(q2.hidden_biases)
-    # print(q2.hidden_weights)
-    # print(q2.output_biases)
-    # print(type(q2.output_weights))
-
     q2.X_minibatch = q1.X_test
     q2.feedforward_single()
-    # print(q2.a_hidden.shape)
-    print(q2.z_output.shape)
+
+    for i in range(50):
+        for j in range(10):
+            if q2.output_weights[i, j] != q1.output_weights[i, j]:
+                msg = f"output weight error at row: {i} col: {j}"
+                assert False, msg
+
+    for i in range(10):
+        if q2.output_biases[i] != q1.output_biases[i]:
+            msg = f"output bias error at index: {i}"
+            assert False, msg
+
+    for i in range(64):
+        for j in range(50):
+            if q2.hidden_weights[i, j] != q1.hidden_weights[0][i, j]:
+                msg = f"hidden weight error at row: {i} col: {j}"
+                assert False, msg
+
+    for i in range(50):
+        if q2.hidden_biases[i] != q1.hidden_biases[0][i]:
+            msg = f"hidden bias error at index: {i}"
+            assert False, msg
 
     for i in range(50):
         for j in range(10):
