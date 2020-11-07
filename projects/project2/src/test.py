@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn import datasets
 import common
 
 class Example2D(common._StatTools):
@@ -27,9 +28,22 @@ class Example2D(common._StatTools):
 
 
 class FFNNSingle(common.FFNN):
-    def __init__(self, verbose=False):
+    def __init__(self, X, y, verbose=False):
+        """
+        Parameters
+        ----------
+        X : numpy.ndarray
+            Design matrix.
+
+        y : numpy.ndarray
+            True output.
+
+        verbose : boolean
+            Toggle verbose mode on / off.
+        """
         self.n_hidden_neurons = 50
-        super(FFNNSingle, self).__init__(hidden_layer_sizes=(50,), verbose=verbose)
+        
+        super(FFNNSingle, self).__init__(X=X, y=y, verbose=verbose)
 
 
     def _initial_state_single(self):
@@ -124,15 +138,16 @@ def test_design_matrix_dimensions():
     assert success, msg
 
 tol = 1e-10
+digits = datasets.load_digits()
 
 np.random.seed(1337)
-q1 = common.FFNN()
+q1 = common.FFNN(X=digits.images, y=digits.target)
 q1._initial_state()
 q1.X_selection = q1.X_train
 q1.feedforward()
 
 np.random.seed(1337)
-q2 = FFNNSingle()
+q2 = FFNNSingle(X=digits.images, y=digits.target)
 q2._initial_state_single()
 q2.X_selection = q2.X_train
 q2.feedforward_single()
@@ -185,7 +200,7 @@ def test_initial_state_and_feedforward_output_neuron_activation():
 
 
 np.random.seed(1337)
-q3 = common.FFNN()
+q3 = common.FFNN(X=digits.images, y=digits.target)
 q3._initial_state()
 q3.X_selection = q3.X_train
 q3.y_selection = q3.y_train
@@ -195,7 +210,7 @@ q3.feedforward()
 q3._backpropagation()
 
 np.random.seed(1337)
-q4 = FFNNSingle()
+q4 = FFNNSingle(X=digits.images, y=digits.target)
 q4._initial_state_single()
 q4.X_selection = q4.X_train
 q4.y_selection = q4.y_train
