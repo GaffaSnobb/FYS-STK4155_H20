@@ -211,21 +211,35 @@ def sigmoid(x):
     return 1/(1 + np.exp(-x))
 
 
-def dsigmoid(x):
+def sigmoid_derivative(x):
     """
     Derivative of the sigmoid function.
     """
-    val = np.exp(-x)
-    return val/(val + 1)**2
+    exponential_term = np.exp(-x)
+    return exponential_term/(1 + exponential_term)**2
 
 
-def cost(y_predicted, y_actual):
+def cross_entropy_derivative(y_predicted, y_actual):
+    """
+    What is the name of this cost function?
+    """
     return y_predicted - y_actual
 
 
 def softmax(z):
-    exp_term = np.exp(z)
-    return exp_term/np.sum(exp_term, axis=1, keepdims=True)
+    """
+    Softmax activation function.
+
+    z : numpy.ndarray
+        Input variable.
+    """
+    exponential_term = np.exp(z)
+    return exponential_term/np.sum(exponential_term, axis=1, keepdims=True)
+
+
+def linear(z):
+    return z
+
 
 class _StatTools:
     def __init__(self, n_data_total, poly_degree, init_beta=None):
@@ -398,12 +412,18 @@ class FFNN(_StatTools):
     Class implementation of a feedforward neural network.
     """
     def __init__(self, X, y, hidden_layer_sizes=(50,), n_categories=10,
-        hidden_layer_activation_function=sigmoid, verbose=False):
+        hidden_layer_activation_function=sigmoid,
+        output_activation_function=softmax,
+        cost_function=cross_entropy_derivative,
+        verbose=False):
         """
         verbose : bool
             Toggle verbose mode on / off.
         """
         try:
+            """
+            hidden_layer_sizes must be an iterable.
+            """
             self.hidden_layer_sizes = hidden_layer_sizes
             self.n_hidden_layers = len(self.hidden_layer_sizes)
         except TypeError:
@@ -412,13 +432,27 @@ class FFNN(_StatTools):
             print(msg)
             sys.exit()
 
-        if callable(hidden_layer_activation_function):
-            self.hidden_layer_activation_function = hidden_layer_activation_function
-        else:
+        if not callable(hidden_layer_activation_function):
             msg = f"hidden_layer_activation_function must be callable!"
             msg += f" Got {type(hidden_layer_activation_function)}."
             print(msg)
             sys.exit()
+
+        if not callable(output_activation_function):
+            msg = f"output_activation_function must be callable!"
+            msg += f" Got {type(output_activation_function)}."
+            print(msg)
+            sys.exit()
+
+        if not callable(cost_function):
+            msg = f"cost_function must be callable!"
+            msg += f" Got {type(cost_function)}."
+            print(msg)
+            sys.exit()
+            
+        self.hidden_layer_activation_function = hidden_layer_activation_function
+        self.output_activation_function = output_activation_function
+        self.cost_function = cost_function
 
         self.X = X
         self.y = y
@@ -453,17 +487,32 @@ class FFNN(_StatTools):
             self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
 
         self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
-        self.neuron_input[-1] = softmax(self.neuron_activation[-1])
+        self.neuron_input[-1] = self.output_activation_function(self.neuron_activation[-1])
+        
+        if self.verbose:
+            print("\nFEEDFORWARD")
+            print("self.output_weights ", self.output_weights.shape)
+            print("self.output_biases.shape ", self.output_biases.shape)
+            print("self.neuron_input[-1].shape ", self.neuron_input[-1].shape)
+            print("self.neuron_activation[-1].shape ", self.neuron_activation[-1].shape)
+            print("(self.neuron_input[-2]@self.output_weights).shape ", (self.neuron_input[-2]@self.output_weights).shape)
 
 
     def _backpropagation(self):
         self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).
-        # self.error[-1] = cost(self.neuron_input[-1], self.y_selection)*dsigmoid(self.neuron_activation[-1])
-        print("LOL (SHOULD BE THE SAME SHAPE)")
-        print("self.neuron_input[-1].shape ", self.neuron_input[-1].shape)
-        print("self.y_selection.shape ", self.y_selection.shape)
-        self.error[-1] = cost(self.neuron_input[-1], self.y_selection)
-        self.error[-2] = self.output_weights@self.error[-1].T*dsigmoid(self.neuron_activation[-2]).T
+        # self.error[-1] = cost(self.neuron_input[-1], self.y_selection)*sigmoid_derivative(self.neuron_activation[-1])
+        if self.verbose:
+            print("\nLOL (SHOULD BE THE SAME SHAPE)")
+            print("self.neuron_input[-1].shape ", self.neuron_input[-1].shape)
+            print("self.y_selection.shape ", self.y_selection.shape)
+            print(np.sum(self.neuron_input[-1], axis=1).shape)
+        
+        self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)
+        if self.verbose:
+            print("\nself.output_weights.shape ", self.output_weights.shape)
+            print("self.error.shape ", self.error[-1].shape)
+            # print(self.error[-1])
+        self.error[-2] = self.output_weights@self.error[-1].T*sigmoid_derivative(self.neuron_activation[-2]).T
 
         self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
         self.bias_gradient[-1] = np.sum(self.error[-1], axis=0)  # Why axis 0 here?
@@ -471,14 +520,14 @@ class FFNN(_StatTools):
 
         self.weight_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
         self.weight_gradient[-1] = (self.error[-1].T@self.neuron_input[-2]).T # SHOULD THERE BE A TRANSPOSE HERE? Must be for dims. to match.
-        self.weight_gradient[-2] = (self.error[-2]@self.neuron_input[-3])
+        self.weight_gradient[-2] = self.error[-2]@self.neuron_input[-3]
 
         for i in range(-3, -self.n_hidden_layers - 2, -1):
             """
             Loop backwards through the errors, bias and weight
             gradients.
             """
-            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*dsigmoid(self.neuron_activation[i].T)
+            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*sigmoid_derivative(self.neuron_activation[i].T)
             self.bias_gradient[i] = np.sum(self.error[i], axis=1)
             self.weight_gradient[i] = self.error[i]@self.neuron_input[i - 1]
 
@@ -499,17 +548,20 @@ class FFNN(_StatTools):
         Split the data into training and testing sets.  Initialize the
         weights and biases for the hidden layer(s) and the output layer.
         """
-        print("BEFORE SPLIT")
-        print("self.X.shape ", self.X.shape)
-        print("self.y.shape", self.y.shape)
+        if self.verbose:
+            print("\nBEFORE SPLIT")
+            print("self.X.shape ", self.X.shape)
+            print("self.y.shape", self.y.shape)
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
-        print(self.y_train)
-        print("AFTER SPLIT")
-        print("self.y_train.shape", self.y_train.shape)
-        self.y_train = to_categorical(self.y_train)
-        print("self.X_train.shape ", self.X_train.shape)
-        print("self.y_train.shape (cat) ", self.y_train.shape)
+        # print(self.y_train)
+        # self.y_train = to_categorical(self.y_train)
+        self.y_train = self.y_train.reshape(-1, 1)
+        if self.verbose:
+            print("\nAFTER SPLIT")
+            print("self.y_train.shape", self.y_train.shape)
+            print("self.X_train.shape ", self.X_train.shape)
+            # print("self.y_train.shape (cat) ", self.y_train.shape)
 
         self.hidden_weights = []
         self.hidden_biases = []
@@ -566,13 +618,14 @@ class FFNN(_StatTools):
                 self.X_selection = self.X_train[minibatch_indices]
                 self.y_selection = self.y_train[minibatch_indices]
 
-                print("SELECTIONS")
-                print("self.X_selection.shape ", self.X_selection.shape)
-                print("self.y_selection.shape ", self.y_selection.shape)
+                if self.verbose:
+                    print("\nSELECTIONS")
+                    print("self.X_selection.shape ", self.X_selection.shape)
+                    print("self.y_selection.shape ", self.y_selection.shape)
                 self.feedforward()
                 self._backpropagation()
-                break
-            break
+            #     break
+            # break
 
         if self.verbose: self.stop_timing()
 
@@ -580,5 +633,11 @@ class FFNN(_StatTools):
     def predict(self, X):
         self.X_selection = X
         self.feedforward()
-        score = accuracy_score(np.argmax(self.probabilities, axis=1), self.y_test)
+        score = accuracy_score(np.argmax(self.neuron_input[-1], axis=1), self.y_test)
         return score
+
+    def predict_regression(self, X):
+        self.X_selection = X
+        self.feedforward()
+        # print((self.neuron_input[-1]).shape)
+        return self.neuron_input[-1].ravel()
