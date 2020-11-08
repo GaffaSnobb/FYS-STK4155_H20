@@ -223,6 +223,10 @@ def cost(y_predicted, y_actual):
     return y_predicted - y_actual
 
 
+def softmax(z):
+    exp_term = np.exp(z)
+    return exp_term/np.sum(exp_term, axis=1, keepdims=True)
+
 class _StatTools:
     def __init__(self, n_data_total, poly_degree, init_beta=None):
         """
@@ -424,8 +428,8 @@ class FFNN(_StatTools):
         
         self.n_epochs = 50
         self.batch_size = 20        # Size of each minibatch.
-        # self.n_categories = 10      # Number of output categories.
-        self.n_categories = n_categories
+        self.n_categories = n_categories    # Number of output categories.
+        print("self.n_categories ", self.n_categories)
         self.verbose = verbose
 
 
@@ -448,15 +452,19 @@ class FFNN(_StatTools):
             self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i] + self.hidden_biases[i]   # No expontential?
             self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
 
-        # self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
-        self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
+        self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
         # self.neuron_input[-1] = sigmoid(self.neuron_activation[-1]) # CURRENTLY NOT IN USE
-        self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
+        # self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
+        # self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
+        self.probabilities = softmax(self.neuron_activation[-1])
 
 
     def _backpropagation(self):
         self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).
         # self.error[-1] = cost(self.neuron_input[-1], self.y_selection)*dsigmoid(self.neuron_activation[-1])
+        print("LOL (SHOULD BE THE SAME SHAPE)")
+        print("self.probabilities.shape ", self.probabilities.shape)
+        print("self.y_selection.shape ", self.y_selection.shape)
         self.error[-1] = cost(self.probabilities, self.y_selection)
         self.error[-2] = self.output_weights@self.error[-1].T*dsigmoid(self.neuron_activation[-2]).T
 
@@ -494,9 +502,17 @@ class FFNN(_StatTools):
         Split the data into training and testing sets.  Initialize the
         weights and biases for the hidden layer(s) and the output layer.
         """
+        print("BEFORE SPLIT")
+        print("self.X.shape ", self.X.shape)
+        print("self.y.shape", self.y.shape)
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
+        print(self.y_train)
+        print("AFTER SPLIT")
+        print("self.y_train.shape", self.y_train.shape)
         self.y_train = to_categorical(self.y_train)
+        print("self.X_train.shape ", self.X_train.shape)
+        print("self.y_train.shape (cat) ", self.y_train.shape)
 
         self.hidden_weights = []
         self.hidden_biases = []
@@ -553,8 +569,13 @@ class FFNN(_StatTools):
                 self.X_selection = self.X_train[minibatch_indices]
                 self.y_selection = self.y_train[minibatch_indices]
 
+                print("SELECTIONS")
+                print("self.X_selection.shape ", self.X_selection.shape)
+                print("self.y_selection.shape ", self.y_selection.shape)
                 self.feedforward()
                 self._backpropagation()
+                break
+            break
 
         if self.verbose: self.stop_timing()
 
