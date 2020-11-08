@@ -453,19 +453,16 @@ class FFNN(_StatTools):
             self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
 
         self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
-        # self.neuron_input[-1] = sigmoid(self.neuron_activation[-1]) # CURRENTLY NOT IN USE
-        # self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
-        # self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
-        self.probabilities = softmax(self.neuron_activation[-1])
+        self.neuron_input[-1] = softmax(self.neuron_activation[-1])
 
 
     def _backpropagation(self):
         self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).
         # self.error[-1] = cost(self.neuron_input[-1], self.y_selection)*dsigmoid(self.neuron_activation[-1])
         print("LOL (SHOULD BE THE SAME SHAPE)")
-        print("self.probabilities.shape ", self.probabilities.shape)
+        print("self.neuron_input[-1].shape ", self.neuron_input[-1].shape)
         print("self.y_selection.shape ", self.y_selection.shape)
-        self.error[-1] = cost(self.probabilities, self.y_selection)
+        self.error[-1] = cost(self.neuron_input[-1], self.y_selection)
         self.error[-2] = self.output_weights@self.error[-1].T*dsigmoid(self.neuron_activation[-2]).T
 
         self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
