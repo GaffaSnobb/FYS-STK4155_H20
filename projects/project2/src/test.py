@@ -28,6 +28,9 @@ class Example2D(common._StatTools):
 
 
 class FFNNSingle(common.FFNN):
+    """
+    Single layer feedforward neural network.
+    """
     def __init__(self, X, y, verbose=False):
         """
         Parameters
@@ -56,7 +59,7 @@ class FFNNSingle(common.FFNN):
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
         self.y_train = common.to_categorical(self.y_train)
 
-        # Weights and biases for the hidden layers.
+        # Weights and biases for the hidden layer.
         self.hidden_weights = np.random.normal(size=(self.n_features, self.n_hidden_neurons))
         self.hidden_biases = np.full(shape=self.n_hidden_neurons, fill_value=0.01)
 
@@ -90,8 +93,9 @@ class FFNNSingle(common.FFNN):
         Perform one feedforward.
         """
         self.a_hidden = common.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
-        self.z_output = np.exp(self.a_hidden@self.output_weights + self.output_biases)
-        self.probabilities = self.z_output/np.sum(self.z_output, axis=1, keepdims=True)
+        self.z_output = self.a_hidden@self.output_weights + self.output_biases
+        z_output_exp = np.exp(self.z_output)
+        self.probabilities = z_output_exp/np.sum(z_output_exp, axis=1, keepdims=True)
 
 
     def train_neural_network_single(self, learning_rate=0.1, lambd=0):
