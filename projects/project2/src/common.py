@@ -43,6 +43,27 @@ def mean_squared_error(x, y):
     return np.mean((x - y)**2)
 
 
+def r_squared(y_observed, y_predicted):
+    """
+    Calculate the score R**2.
+
+    Parameters
+    ----------
+    y_observed : numpy.ndarray
+        Observed values.
+
+    y_predicted : numpy.ndarray
+        Predicted values.
+
+    Returns
+    -------
+    : numpy.ndarray
+        The R**2 score.
+    """
+    return 1 - np.sum((y_observed - y_predicted)**2)/\
+        np.sum((y_observed - np.mean(y_observed))**2)
+
+
 def step_length(t, t0, t1):
     return t0/(t + t1)
 
@@ -412,7 +433,7 @@ class FFNN(_StatTools):
     """
     Class implementation of a feedforward neural network.
     """
-    def __init__(self, design_matrix, true_output, hidden_layer_sizes=(50,),
+    def __init__(self, input_data, true_output, hidden_layer_sizes=(50,),
         n_categories=10, n_epochs=50, batch_size=20,
         hidden_layer_activation_function=sigmoid,
         output_activation_function=softmax,
@@ -455,7 +476,7 @@ class FFNN(_StatTools):
         self.output_activation_function = output_activation_function
         self.cost_function = cost_function
 
-        self.X = design_matrix
+        self.X = input_data
         self.y = true_output
         self.n_data_total = self.X.shape[0] # Total number of data points.
         self.X = self.X.reshape(self.n_data_total, -1)  # Flatten third axis, if any.
@@ -500,19 +521,19 @@ class FFNN(_StatTools):
 
 
     def _backpropagation(self):
-        self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).
+        self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).        
+        # self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)
+        self.error[-1] = self.neuron_input[-1] - self.y_selection
+        self.error[-2] = self.output_weights@self.error[-1].T
+        self.error[-2] *= sigmoid_derivative(self.neuron_activation[-2]).T
+        
         if self.debug:
             print("\nBACKPROPAGATION")
             print("self.neuron_input[-1].shape ", self.neuron_input[-1].shape)
             print("self.y_selection.shape ", self.y_selection.shape)
             print(np.sum(self.neuron_input[-1], axis=1).shape)
-        
-        self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)
-        if self.debug:
             print("\nself.output_weights.shape ", self.output_weights.shape)
-            print("self.error.shape ", self.error[-1].shape)
-            # print(self.error[-1])
-        self.error[-2] = self.output_weights@self.error[-1].T*sigmoid_derivative(self.neuron_activation[-2]).T
+            print("self.error[-1].shape ", self.error[-1].shape)
 
         self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
         self.bias_gradient[-1] = np.sum(self.error[-1], axis=0)  # Why axis 0 here?
@@ -527,19 +548,28 @@ class FFNN(_StatTools):
             Loop backwards through the errors, bias and weight
             gradients.
             """
-            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*sigmoid_derivative(self.neuron_activation[i].T)
+            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]
+            self.error[i] *= sigmoid_derivative(self.neuron_activation[i].T)
             self.bias_gradient[i] = np.sum(self.error[i], axis=1)
             self.weight_gradient[i] = self.error[i]@self.neuron_input[i - 1]
 
-        self.output_weights -= self.learning_rate*(self.weight_gradient[-1]) + self.lambd*self.output_weights
+        self.output_weights -= self.learning_rate*(self.weight_gradient[-1]) \
+            + self.lambd*self.output_weights
         self.output_biases -= self.learning_rate*(self.bias_gradient[-1])
 
         for i in range(-1, -self.n_hidden_layers - 1, -1):
             """
             Loop backwards through the hidden weights and biases.
             """
-            self.hidden_weights[i] -= self.learning_rate*(self.weight_gradient[i - 1].T) + self.lambd*(self.hidden_weights[i])
+            self.hidden_weights[i] -= self.learning_rate*(self.weight_gradient[i - 1].T)\
+                + self.lambd*(self.hidden_weights[i])
             self.hidden_biases[i] -= self.learning_rate*(self.bias_gradient[i - 1])
+
+        for i in range(self.n_hidden_layers + 1):
+            if np.any(np.isnan(self.bias_gradient[i])):
+                print(f"NaN detected in bias_gradient at index {i}!")
+            if np.any(np.isnan(self.weight_gradient[i])):
+                print(f"NaN detected in weight_gradient at index {i}!")
 
 
     def _initial_state(self):
@@ -555,7 +585,7 @@ class FFNN(_StatTools):
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
         # print(self.y_train)
-        # self.y_train = to_categorical(self.y_train)
+        self.y_train = to_categorical(self.y_train)
         self.y_train = self.y_train.reshape(-1, 1)
         if self.debug:
             print("\nAFTER SPLIT")
@@ -603,6 +633,7 @@ class FFNN(_StatTools):
         if self.verbose:
             self.start_timing()
             print(f"learning_rate: {learning_rate}")
+        
         self.learning_rate = learning_rate
         self.lambd = lambd
 
@@ -632,6 +663,7 @@ class FFNN(_StatTools):
                     print("self.y_selection.shape ", self.y_selection.shape)
                 self.feedforward()
                 self._backpropagation()
+                
                 if self.debug: break
             if self.debug: break
 
@@ -648,7 +680,7 @@ class FFNN(_StatTools):
     def predict_regression(self, X):
         self.X_selection = X
         self.feedforward()
-        # print((self.neuron_input[-1]).shape)
+
         return self.neuron_input[-1].ravel()
 
 
@@ -660,3 +692,13 @@ class FFNN(_StatTools):
         mse_test = mean_squared_error(self.y_test, y_test_prediction)
 
         return mse_train, mse_test
+
+
+    @property
+    def r_squared(self):
+        y_train_prediction = self.predict_regression(self.X_train)
+        y_test_prediction = self.predict_regression(self.X_test)
+        r_train = r_squared(self.y_train, y_train_prediction)
+        r_test = r_squared(self.y_test, y_test_prediction)
+
+        return r_train, r_test
