@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import datasets
+from sklearn.metrics import accuracy_score
 import common
 
 
@@ -14,8 +16,8 @@ def temporary_sklearn_solution():
 
     x1 = np.random.uniform(0, 1, n_data_total)
     x2 = np.random.uniform(0, 1, n_data_total)
-    X = common.create_design_matrix_two_dependent_variables(x1,
-        x2, n_data_total, poly_degree)
+    X = np.zeros(shape=(n_data_total, 2))
+    for i in range(n_data_total): X[i] = x1[i], x2[i]
     y = common.franke_function(x1, x2)
 
     N = 50
@@ -35,6 +37,7 @@ def temporary_sklearn_solution():
         mse_test[i] = common.mean_squared_error(reg.predict(X_test), y_test)
         mse_train[i] = common.mean_squared_error(reg.predict(X_train), y_train)
 
+
     plt.plot(learning_rates, mse_train, label="train")
     plt.plot(learning_rates, mse_test, label="test")
     plt.xlabel("learning rate")
@@ -45,22 +48,25 @@ def temporary_sklearn_solution():
 
 
 def neural_network_franke():
+    # np.random.seed(1337)
     n_data_total = 400
     poly_degree = 3
 
     x1 = np.random.uniform(0, 1, n_data_total)
     x2 = np.random.uniform(0, 1, n_data_total)
-    X = common.create_design_matrix_two_dependent_variables(x1,
-        x2, n_data_total, poly_degree)
+    # X = common.create_design_matrix_two_dependent_variables(x1,
+    #     x2, n_data_total, poly_degree)
+    X = np.zeros(shape=(n_data_total, 2))
+    for i in range(n_data_total): X[i] = x1[i], x2[i]
     y = common.franke_function(x1, x2)
 
     q1 = common.FFNN(
-        design_matrix = X,
+        input_data = X,
         true_output = y,
-        hidden_layer_sizes = (50, 20, 20),
+        hidden_layer_sizes = (50, 50, 50),
         n_categories = 1,
         n_epochs = 50,
-        batch_size = 10,
+        batch_size = 60,
         hidden_layer_activation_function = common.sigmoid,
         output_activation_function = common.linear,
         cost_function = common.cross_entropy_derivative,
@@ -68,14 +74,15 @@ def neural_network_franke():
         debug = False)
 
     N = 20
-    learning_rates = np.logspace(-3, -1, N)
-    # learning_rates = np.linspace(1e-5, 1, N)
+    # learning_rates = np.logspace(-3, -1, N)
+    learning_rates = np.linspace(1e-5, 1e-3, N)
     mse_train = np.zeros(N)
     mse_test = np.zeros(N)
 
     for i in range(N):
         q1.train_neural_network(learning_rates[i])
         mse_train[i], mse_test[i] = q1.mse
+        # mse_train[i], mse_test[i] = q1.r_squared
 
     plt.plot(learning_rates, mse_train, label="train")
     plt.plot(learning_rates, mse_test, label="test")
@@ -84,14 +91,41 @@ def neural_network_franke():
     plt.legend()
     plt.show()
 
+
+def digits_classification():
+    digits = datasets.load_digits()
+
+    q1 = common.FFNN(
+        input_data = digits.images,
+        true_output = digits.target,
+        hidden_layer_sizes = (50, 50),
+        n_categories = 10,
+        n_epochs = 50,
+        batch_size = 10,
+        hidden_layer_activation_function = common.sigmoid,
+        output_activation_function = common.softmax,
+        cost_function = common.cross_entropy_derivative,
+        verbose = True,
+        debug = False)
+
+
+    N = 20
+    learning_rates = np.logspace(-5, -1, N)
+    # learning_rates = np.linspace(1e-5, 1e-1, N)
+    score = np.zeros(N)
+
+    for i in range(N):
+        q1.train_neural_network(learning_rates[i])
+        score[i] = q1.predict(q1.X_test)
+
+    plt.plot(learning_rates, score, label="score")
+    plt.xlabel("learning rate")
+    plt.ylabel("score")
+    plt.legend()
+    plt.show()
+
 if __name__ == "__main__":
     # neural_network_franke()
-    temporary_sklearn_solution()
-
-    # q1 = common.FFNN(X=digits.images, y=digits.target,
-    #     hidden_layer_sizes=(50, 20, 20), n_categories=10,
-    #     hidden_layer_activation_function=common.sigmoid,
-    #     output_activation_function=common.softmax,
-    #     cost_function=common.cross_entropy_derivative,
-    #     verbose=True)
+    # temporary_sklearn_solution()
+    digits_classification()
     pass
