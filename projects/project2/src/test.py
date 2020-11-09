@@ -29,7 +29,7 @@ class Example2D(common._StatTools):
 
 class FFNNSingle(common.FFNN):
     """
-    Single layer feedforward neural network.
+    Feedforward neural network with one layer hard-coded.
     """
     def __init__(self, X, y, verbose=False):
         """
@@ -226,7 +226,7 @@ q4._backpropagation_single()
 def test_backpropagation_probabilities():
     for i in range(1437):
         for j in range(10):
-            if np.abs(q4.probabilities[i, j] - q3.probabilities[i, j]) > tol:
+            if np.abs(q4.probabilities[i, j] - q3.neuron_input[-1][i, j]) > tol:
                 msg = f"probability error at row: {i} col: {j}"
                 assert False, msg
 
