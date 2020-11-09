@@ -416,8 +416,7 @@ class FFNN(_StatTools):
         n_categories=10, n_epochs=50, batch_size=20,
         hidden_layer_activation_function=sigmoid,
         output_activation_function=softmax,
-        cost_function=cross_entropy_derivative,
-        verbose=False, debug=False):
+        cost_function=cross_entropy_derivative, verbose=False, debug=False):
         """
         verbose : bool
             Toggle verbose mode on / off.
