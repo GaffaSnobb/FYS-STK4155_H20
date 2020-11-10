@@ -91,8 +91,9 @@ class FFNNSingle(common.FFNN):
         Perform one feedforward.
         """
         self.a_hidden = common.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
-        self.z_output = np.exp(self.a_hidden@self.output_weights + self.output_biases)
-        self.probabilities = self.z_output/np.sum(self.z_output, axis=1, keepdims=True)
+        self.z_output = self.a_hidden@self.output_weights + self.output_biases
+        exponential_term = np.exp(self.z_output)
+        self.probabilities = exponential_term/np.sum(exponential_term, axis=1, keepdims=True)
 
 
 def test_design_matrix_dimensions():
@@ -109,7 +110,7 @@ tol = 1e-10
 digits = datasets.load_digits()
 
 np.random.seed(1337)
-q1 = common.FFNN(input_data=digits.images, true_output=digits.target)
+q1 = common.FFNNClassifier(input_data=digits.images, true_output=digits.target)
 q1._initial_state()
 q1.X_selection = q1.X_train
 q1.feedforward()
@@ -168,7 +169,7 @@ def test_initial_state_and_feedforward_output_neuron_activation():
 
 
 np.random.seed(1337)
-q3 = common.FFNN(input_data=digits.images, true_output=digits.target)
+q3 = common.FFNNClassifier(input_data=digits.images, true_output=digits.target)
 q3._initial_state()
 q3.X_selection = q3.X_train
 q3.y_selection = q3.y_train
@@ -190,7 +191,7 @@ q4._backpropagation()
 def test_backpropagation_probabilities():
     for i in range(1437):
         for j in range(10):
-            if np.abs(q4.probabilities[i, j] - q3.probabilities[i, j]) > tol:
+            if np.abs(q4.probabilities[i, j] - q3.neuron_input[-1][i, j]) > tol:
                 msg = f"probability error at row: {i} col: {j}"
                 assert False, msg
 
@@ -265,4 +266,4 @@ if __name__ == "__main__":
     test_backpropagation_hidden_error()
     test_backpropagation_output_weights()
     test_backpropagation_hidden_biases()
-    test_backpropagation_hidden_weights
+    test_backpropagation_hidden_weights()
