@@ -211,17 +211,37 @@ def sigmoid(x):
     return 1/(1 + np.exp(-x))
 
 
-def dsigmoid(x):
+def sigmoid_derivative(x):
     """
     Derivative of the sigmoid function.
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Input parameter.
     """
-    val = np.exp(-x)
-    return val/(val + 1)**2
+    exponential_term = np.exp(-x)
+    return exponential_term/(1 + exponential_term)**2
 
 
-def cost(y_predicted, y_actual):
+def cross_entropy_derivative(y_predicted, y_actual):
+    """
+    Derivative of cross entropy cost function.
+    """
     return y_predicted - y_actual
 
+
+def softmax(z):
+    """
+    Softmax activation function.
+    z : numpy.ndarray
+        Input variable.
+    """
+    exponential_term = np.exp(z)
+    return exponential_term/np.sum(exponential_term, axis=1, keepdims=True)
+
+
+def linear(z):
+    return z
 
 class _StatTools:
     def __init__(self, n_data_total, poly_degree, init_beta=None):
@@ -393,8 +413,11 @@ class FFNN(_StatTools):
     """
     Class implementation of a feedforward neural network.
     """
-    def __init__(self, X, y, hidden_layer_sizes=(50,), n_categories=10,
-        hidden_layer_activation_function=sigmoid, verbose=False):
+    def __init__(self, input_data, true_output, hidden_layer_sizes=(50,),
+        n_categories=10, n_epochs=50, batch_size=20,
+        hidden_layer_activation_function=sigmoid,
+        output_activation_function=softmax,
+        cost_function=cross_entropy_derivative, verbose=False, debug=False):
         """
         verbose : bool
             Toggle verbose mode on / off.
@@ -408,25 +431,39 @@ class FFNN(_StatTools):
             print(msg)
             sys.exit()
 
-        if callable(hidden_layer_activation_function):
-            self.hidden_layer_activation_function = hidden_layer_activation_function
-        else:
+        if not callable(hidden_layer_activation_function):
             msg = f"hidden_layer_activation_function must be callable!"
             msg += f" Got {type(hidden_layer_activation_function)}."
             print(msg)
             sys.exit()
 
-        self.X = X
-        self.y = y
+        if not callable(output_activation_function):
+            msg = f"output_activation_function must be callable!"
+            msg += f" Got {type(output_activation_function)}."
+            print(msg)
+            sys.exit()
+
+        if not callable(cost_function):
+            msg = f"cost_function must be callable!"
+            msg += f" Got {type(cost_function)}."
+            print(msg)
+            sys.exit()
+
+        self.hidden_layer_activation_function = hidden_layer_activation_function
+        self.output_activation_function = output_activation_function
+        self.cost_function = cost_function
+
+        self.X = input_data
+        self.y = true_output
         self.n_data_total = self.X.shape[0] # Total number of data points.
         self.X = self.X.reshape(self.n_data_total, -1)
         self.n_features = self.X.shape[1]   # The number of features.
         
-        self.n_epochs = 50
-        self.batch_size = 20        # Size of each minibatch.
-        # self.n_categories = 10      # Number of output categories.
-        self.n_categories = n_categories
+        self.n_epochs = n_epochs            # Number of epochs.
+        self.batch_size = batch_size        # Size of each minibatch.
+        self.n_categories = n_categories    # Number of output categories.
         self.verbose = verbose
+        self.debug = debug
 
 
     def feedforward(self):
@@ -456,9 +493,9 @@ class FFNN(_StatTools):
 
     def _backpropagation(self):
         self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).
-        # self.error[-1] = cost(self.neuron_input[-1], self.y_selection)*dsigmoid(self.neuron_activation[-1])
-        self.error[-1] = cost(self.probabilities, self.y_selection)
-        self.error[-2] = self.output_weights@self.error[-1].T*dsigmoid(self.neuron_activation[-2]).T
+        # self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)*sigmoid_derivative(self.neuron_activation[-1])
+        self.error[-1] = self.cost_function(self.probabilities, self.y_selection)
+        self.error[-2] = self.output_weights@self.error[-1].T*sigmoid_derivative(self.neuron_activation[-2]).T
 
         self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
         self.bias_gradient[-1] = np.sum(self.error[-1], axis=0)  # Why axis 0 here?
@@ -473,7 +510,7 @@ class FFNN(_StatTools):
             Loop backwards through the errors, bias and weight
             gradients.
             """
-            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*dsigmoid(self.neuron_activation[i].T)
+            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*sigmoid_derivative(self.neuron_activation[i].T)
             self.bias_gradient[i] = np.sum(self.error[i], axis=1)
             self.weight_gradient[i] = self.error[i]@self.neuron_input[i - 1]
 
