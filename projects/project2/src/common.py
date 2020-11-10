@@ -409,7 +409,7 @@ class _StatTools:
         return mse_train, mse_test
 
 
-class FFNN(_StatTools):
+class FFNN:
     """
     Class implementation of a feedforward neural network.
     """
@@ -466,65 +466,6 @@ class FFNN(_StatTools):
         self.debug = debug
 
 
-    def feedforward(self):
-        """
-        Perform one feedforward.
-        """
-        self.neuron_input = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray)  # a
-        self.neuron_activation = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray) # z
-
-        self.neuron_input[0] = self.X_selection # Input to first layer is the design matrix.
-        self.neuron_activation[0] = np.array([0])
-
-        for i in range(self.n_hidden_layers):
-            """
-            Loop over the hidden layers.  Calculate the neuron
-            activation and neuron input for all neurons in all hidden
-            layers.
-            """
-            self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i] + self.hidden_biases[i]   # No expontential?
-            self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
-
-        # self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
-        self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
-        # self.neuron_input[-1] = sigmoid(self.neuron_activation[-1]) # CURRENTLY NOT IN USE
-        self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
-
-
-    def _backpropagation(self):
-        self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for hidden layers and output layer (or is it input?).
-        # self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)*sigmoid_derivative(self.neuron_activation[-1])
-        self.error[-1] = self.cost_function(self.probabilities, self.y_selection)
-        self.error[-2] = self.output_weights@self.error[-1].T*sigmoid_derivative(self.neuron_activation[-2]).T
-
-        self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
-        self.bias_gradient[-1] = np.sum(self.error[-1], axis=0)  # Why axis 0 here?
-        self.bias_gradient[-2] = np.sum(self.error[-2], axis=1)  # Why axis 1 here?
-
-        self.weight_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
-        self.weight_gradient[-1] = (self.error[-1].T@self.neuron_input[-2]).T # SHOULD THERE BE A TRANSPOSE HERE? Must be for dims. to match.
-        self.weight_gradient[-2] = (self.error[-2]@self.neuron_input[-3])
-
-        for i in range(-3, -self.n_hidden_layers - 2, -1):
-            """
-            Loop backwards through the errors, bias and weight
-            gradients.
-            """
-            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*sigmoid_derivative(self.neuron_activation[i].T)
-            self.bias_gradient[i] = np.sum(self.error[i], axis=1)
-            self.weight_gradient[i] = self.error[i]@self.neuron_input[i - 1]
-
-        self.output_weights -= self.learning_rate*(self.weight_gradient[-1]) + self.lambd*self.output_weights
-        self.output_biases -= self.learning_rate*(self.bias_gradient[-1])
-
-        for i in range(-1, -self.n_hidden_layers - 1, -1):
-            """
-            Loop backwards through the hidden weights and biases.
-            """
-            self.hidden_weights[i] -= self.learning_rate*(self.weight_gradient[i - 1].T) + self.lambd*(self.hidden_weights[i])
-            self.hidden_biases[i] -= self.learning_rate*(self.bias_gradient[i - 1])
-
-
     def _initial_state(self):
         """
         Set the system to the correct state before training starts.
@@ -559,6 +500,79 @@ class FFNN(_StatTools):
         # Weights and biases for the output layer.
         self.output_weights = np.random.normal(size=(self.hidden_layer_sizes[-1], self.n_categories))
         self.output_biases = np.full(shape=self.n_categories, fill_value=0.01)
+
+
+    def start_timing(self):
+        self.stopwatch = time.time()
+
+
+    def stop_timing(self):
+        self.stopwatch = time.time() - self.stopwatch
+        print(f"{sys._getframe().f_back.f_code.co_name} time: {self.stopwatch:.4f} s")
+
+
+class FFNNClassifier(FFNN):
+    def feedforward(self):
+        """
+        Perform one feedforward.
+        """
+        self.neuron_input = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray)  # a
+        self.neuron_activation = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray) # z
+
+        self.neuron_input[0] = self.X_selection
+        self.neuron_activation[0] = np.array([0])
+
+        for i in range(self.n_hidden_layers):
+            """
+            Loop over the hidden layers.  Calculate the neuron
+            activation and neuron input for all neurons in all hidden
+            layers.
+            """
+            self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i] + self.hidden_biases[i]   # No expontential?
+            self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
+
+        # self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
+        # self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
+        self.neuron_activation[-1] = (self.neuron_input[-2]@self.output_weights + self.output_biases)
+        # self.neuron_input[-1] = np.exp(self.neuron_activation[-1])/np.sum(np.exp(self.neuron_activation[-1]), axis=1, keepdims=True)
+        self.neuron_input[-1] = self.output_activation_function(self.neuron_activation[-1])  # Messy with softmax. Lots of overflows.
+        
+        
+        # self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
+
+
+    def _backpropagation(self):
+        self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for output and hidden layers.
+        # self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)*sigmoid_derivative(self.neuron_activation[-1])
+        self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)
+        self.error[-2] = self.output_weights@self.error[-1].T*sigmoid_derivative(self.neuron_activation[-2]).T
+
+        self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
+        self.bias_gradient[-1] = np.sum(self.error[-1], axis=0)  # Why axis 0 here?
+        self.bias_gradient[-2] = np.sum(self.error[-2], axis=1)  # Why axis 1 here?
+
+        self.weight_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
+        self.weight_gradient[-1] = (self.error[-1].T@self.neuron_input[-2]).T # SHOULD THERE BE A TRANSPOSE HERE? Must be for dims. to match.
+        self.weight_gradient[-2] = (self.error[-2]@self.neuron_input[-3])
+
+        for i in range(-3, -self.n_hidden_layers - 2, -1):
+            """
+            Loop backwards through the errors, bias and weight
+            gradients.
+            """
+            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*sigmoid_derivative(self.neuron_activation[i].T)
+            self.bias_gradient[i] = np.sum(self.error[i], axis=1)
+            self.weight_gradient[i] = self.error[i]@self.neuron_input[i - 1]
+
+        self.output_weights -= self.learning_rate*(self.weight_gradient[-1]) + self.lambd*self.output_weights
+        self.output_biases -= self.learning_rate*(self.bias_gradient[-1])
+
+        for i in range(-1, -self.n_hidden_layers - 1, -1):
+            """
+            Loop backwards through the hidden weights and biases.
+            """
+            self.hidden_weights[i] -= self.learning_rate*(self.weight_gradient[i - 1].T) + self.lambd*(self.hidden_weights[i])
+            self.hidden_biases[i] -= self.learning_rate*(self.bias_gradient[i - 1])
 
 
     def train_neural_network(self, learning_rate=0.1, lambd=0):
@@ -599,5 +613,10 @@ class FFNN(_StatTools):
     def predict(self, X):
         self.X_selection = X
         self.feedforward()
-        score = accuracy_score(np.argmax(self.probabilities, axis=1), self.y_test)
+        score = accuracy_score(np.argmax(self.neuron_activation[-1], axis=1), self.y_test)
+        # score = accuracy_score(np.argmax(self.probabilities, axis=1), self.y_test)
         return score
+
+
+class FFNNRegressor(FFNN):
+    pass
