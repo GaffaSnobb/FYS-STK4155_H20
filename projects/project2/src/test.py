@@ -47,7 +47,7 @@ class FFNNSingle(common.FFNN):
             true_output=true_output, verbose=verbose)
 
 
-    def _initial_state_single(self):
+    def _initial_state(self):
         """
         Set the system to the correct state before training starts.
         Split the data into training and testing sets.  Initialize the
@@ -66,7 +66,7 @@ class FFNNSingle(common.FFNN):
         self.output_biases = np.full(shape=self.n_categories, fill_value=0.01)
 
 
-    def _backpropagation_single(self):
+    def _backpropagation(self):
         """
         Perform one backpropagation.
         """
@@ -86,46 +86,13 @@ class FFNNSingle(common.FFNN):
         self.hidden_biases -= self.learning_rate*hidden_biases_gradient
 
 
-    def feedforward_single(self):
+    def feedforward(self):
         """
         Perform one feedforward.
         """
         self.a_hidden = common.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
         self.z_output = np.exp(self.a_hidden@self.output_weights + self.output_biases)
         self.probabilities = self.z_output/np.sum(self.z_output, axis=1, keepdims=True)
-
-
-    def train_neural_network_single(self, learning_rate=0.1, lambd=0):
-        """
-        Train the neural network.
-        """
-        self._initial_state_single()
-        if self.verbose: self.start_timing()
-        self.learning_rate = learning_rate
-        self.lambd = lambd
-
-        data_indices = np.arange(self.X_train.shape[0])
-        n_iterations = self.n_data_total//self.batch_size
-
-        for _ in range(self.n_epochs):
-            """
-            Loop over epochs.
-            """
-            for _ in range(n_iterations):
-                """
-                Loop over iterations.  The number of iterations is the
-                total number of data points divided by the batch size.
-                """
-                minibatch_indices = np.random.choice(data_indices,
-                    size=self.batch_size, replace=True)
-
-                self.X_selection = self.X_train[minibatch_indices]
-                self.y_selection = self.y_train[minibatch_indices]
-
-                self.feedforward_single()
-                self._backpropagation_single()
-
-        if self.verbose: self.stop_timing()
 
 
 def test_design_matrix_dimensions():
@@ -149,9 +116,9 @@ q1.feedforward()
 
 np.random.seed(1337)
 q2 = FFNNSingle(input_data=digits.images, true_output=digits.target)
-q2._initial_state_single()
+q2._initial_state()
 q2.X_selection = q2.X_train
-q2.feedforward_single()
+q2.feedforward()
 
 
 def test_initial_state_and_feedforward_output_weights():
@@ -212,13 +179,13 @@ q3._backpropagation()
 
 np.random.seed(1337)
 q4 = FFNNSingle(input_data=digits.images, true_output=digits.target)
-q4._initial_state_single()
+q4._initial_state()
 q4.X_selection = q4.X_train
 q4.y_selection = q4.y_train
 q4.learning_rate = 0.1
 q4.lambd = 0
-q4.feedforward_single()
-q4._backpropagation_single()
+q4.feedforward()
+q4._backpropagation()
 
 def test_backpropagation_probabilities():
     for i in range(1437):
