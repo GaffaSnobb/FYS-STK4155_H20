@@ -59,7 +59,7 @@ class FFNNSingle(common._FFNN):
             batch_size = batch_size,
             hidden_layer_activation_function = common.sigmoid,
             output_activation_function = common.softmax,
-            cost_function = common.cross_entropy_derivative,
+            cost_function_derivative = common.cross_entropy_derivative_with_softmax,
             verbose = verbose,
             debug = False)
 
@@ -136,7 +136,7 @@ q1 = common.FFNNClassifier(
     batch_size = batch_size,
     hidden_layer_activation_function = common.sigmoid,
     output_activation_function = common.softmax,
-    cost_function = common.cross_entropy_derivative,
+    cost_function_derivative = common.cross_entropy_derivative_with_softmax,
     verbose = False,
     debug = False)
 
@@ -207,7 +207,7 @@ q3 = common.FFNNClassifier(
     batch_size = batch_size,
     hidden_layer_activation_function = common.sigmoid,
     output_activation_function = common.softmax,
-    cost_function = common.cross_entropy_derivative,
+    cost_function_derivative = common.cross_entropy_derivative_with_softmax,
     verbose = False,
     debug = False)
 
