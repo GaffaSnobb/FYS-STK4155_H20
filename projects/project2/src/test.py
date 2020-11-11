@@ -3,6 +3,13 @@ from sklearn.model_selection import train_test_split
 from sklearn import datasets
 import common
 
+
+hidden_layer_sizes = (50,)
+n_categories = 10
+n_epochs = 30
+batch_size = 20
+
+
 class Example2D(common._StatTools):
     def __init__(self, n_data_total, poly_degree, init_beta=None):
         """
@@ -43,8 +50,18 @@ class FFNNSingle(common.FFNN):
         """
         self.n_hidden_neurons = 50
         
-        super(FFNNSingle, self).__init__(input_data=input_data,
-            true_output=true_output, verbose=verbose)
+        super(FFNNSingle, self).__init__(
+            input_data = input_data,
+            true_output = true_output,
+            hidden_layer_sizes = hidden_layer_sizes,
+            n_categories = n_categories,
+            n_epochs = n_epochs,
+            batch_size = batch_size,
+            hidden_layer_activation_function = common.sigmoid,
+            output_activation_function = common.softmax,
+            cost_function = common.cross_entropy_derivative,
+            verbose = verbose,
+            debug = False)
 
 
     def _initial_state(self):
@@ -110,7 +127,19 @@ tol = 1e-10
 digits = datasets.load_digits()
 
 np.random.seed(1337)
-q1 = common.FFNNClassifier(input_data=digits.images, true_output=digits.target)
+q1 = common.FFNNClassifier(
+    input_data = digits.images,
+    true_output = digits.target,
+    hidden_layer_sizes = hidden_layer_sizes,
+    n_categories = n_categories,
+    n_epochs = n_epochs,
+    batch_size = batch_size,
+    hidden_layer_activation_function = common.sigmoid,
+    output_activation_function = common.softmax,
+    cost_function = common.cross_entropy_derivative,
+    verbose = False,
+    debug = False)
+
 q1._initial_state()
 q1.X_selection = q1.X_train
 q1.feedforward()
@@ -169,7 +198,19 @@ def test_initial_state_and_feedforward_output_neuron_activation():
 
 
 np.random.seed(1337)
-q3 = common.FFNNClassifier(input_data=digits.images, true_output=digits.target)
+q3 = common.FFNNClassifier(
+    input_data = digits.images,
+    true_output = digits.target,
+    hidden_layer_sizes = hidden_layer_sizes,
+    n_categories = n_categories,
+    n_epochs = n_epochs,
+    batch_size = batch_size,
+    hidden_layer_activation_function = common.sigmoid,
+    output_activation_function = common.softmax,
+    cost_function = common.cross_entropy_derivative,
+    verbose = False,
+    debug = False)
+    
 q3._initial_state()
 q3.X_selection = q3.X_train
 q3.y_selection = q3.y_train
