@@ -3,6 +3,13 @@ from sklearn.model_selection import train_test_split
 from sklearn import datasets
 import common
 
+
+hidden_layer_sizes = (50,)
+n_categories = 10
+n_epochs = 30
+batch_size = 20
+
+
 class Example2D(common._StatTools):
     def __init__(self, n_data_total, poly_degree, init_beta=None):
         """
@@ -27,11 +34,8 @@ class Example2D(common._StatTools):
         super(Example2D, self).__init__(n_data_total, poly_degree, init_beta)
 
 
-class FFNNSingle(common.FFNN):
-    """
-    Feedforward neural network with one layer hard-coded.
-    """
-    def __init__(self, X, y, verbose=False):
+class FFNNSingle(common._FFNN):
+    def __init__(self, input_data, true_output, verbose=False):
         """
         Parameters
         ----------
@@ -46,10 +50,21 @@ class FFNNSingle(common.FFNN):
         """
         self.n_hidden_neurons = 50
         
-        super(FFNNSingle, self).__init__(X=X, y=y, verbose=verbose)
+        super(FFNNSingle, self).__init__(
+            input_data = input_data,
+            true_output = true_output,
+            hidden_layer_sizes = hidden_layer_sizes,
+            n_categories = n_categories,
+            n_epochs = n_epochs,
+            batch_size = batch_size,
+            hidden_layer_activation_function = common.sigmoid,
+            output_activation_function = common.softmax,
+            cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+            verbose = verbose,
+            debug = False)
 
 
-    def _initial_state_single(self):
+    def _initial_state(self):
         """
         Set the system to the correct state before training starts.
         Split the data into training and testing sets.  Initialize the
@@ -68,7 +83,7 @@ class FFNNSingle(common.FFNN):
         self.output_biases = np.full(shape=self.n_categories, fill_value=0.01)
 
 
-    def _backpropagation_single(self):
+    def _backpropagation(self):
         """
         Perform one backpropagation.
         """
@@ -88,47 +103,14 @@ class FFNNSingle(common.FFNN):
         self.hidden_biases -= self.learning_rate*hidden_biases_gradient
 
 
-    def feedforward_single(self):
+    def feedforward(self):
         """
         Perform one feedforward.
         """
         self.a_hidden = common.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
         self.z_output = self.a_hidden@self.output_weights + self.output_biases
-        z_output_exp = np.exp(self.z_output)
-        self.probabilities = z_output_exp/np.sum(z_output_exp, axis=1, keepdims=True)
-
-
-    def train_neural_network_single(self, learning_rate=0.1, lambd=0):
-        """
-        Train the neural network.
-        """
-        self._initial_state_single()
-        if self.verbose: self.start_timing()
-        self.learning_rate = learning_rate
-        self.lambd = lambd
-
-        data_indices = np.arange(self.X_train.shape[0])
-        n_iterations = self.n_data_total//self.batch_size
-
-        for _ in range(self.n_epochs):
-            """
-            Loop over epochs.
-            """
-            for _ in range(n_iterations):
-                """
-                Loop over iterations.  The number of iterations is the
-                total number of data points divided by the batch size.
-                """
-                minibatch_indices = np.random.choice(data_indices,
-                    size=self.batch_size, replace=True)
-
-                self.X_selection = self.X_train[minibatch_indices]
-                self.y_selection = self.y_train[minibatch_indices]
-
-                self.feedforward_single()
-                self._backpropagation_single()
-
-        if self.verbose: self.stop_timing()
+        exponential_term = np.exp(self.z_output)
+        self.probabilities = exponential_term/np.sum(exponential_term, axis=1, keepdims=True)
 
 
 def test_design_matrix_dimensions():
@@ -145,16 +127,30 @@ tol = 1e-10
 digits = datasets.load_digits()
 
 np.random.seed(1337)
-q1 = common.FFNN(X=digits.images, y=digits.target)
+q1 = common.FFNNClassifier(
+    input_data = digits.images,
+    true_output = digits.target,
+    hidden_layer_sizes = hidden_layer_sizes,
+    n_categories = n_categories,
+    n_epochs = n_epochs,
+    batch_size = batch_size,
+    hidden_layer_activation_function = common.sigmoid,
+    hidden_layer_activation_function_derivative = common.sigmoid_derivative,
+    output_activation_function = common.softmax,
+    cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+    scaling = False,
+    verbose = False,
+    debug = False)
+
 q1._initial_state()
 q1.X_selection = q1.X_train
 q1.feedforward()
 
 np.random.seed(1337)
-q2 = FFNNSingle(X=digits.images, y=digits.target)
-q2._initial_state_single()
+q2 = FFNNSingle(input_data=digits.images, true_output=digits.target)
+q2._initial_state()
 q2.X_selection = q2.X_train
-q2.feedforward_single()
+q2.feedforward()
 
 
 def test_initial_state_and_feedforward_output_weights():
@@ -187,24 +183,38 @@ def test_initial_state_and_feedforward_hidden_biases():
             assert False, msg
 
 
-def test_initial_state_and_feedforward_hidden_neuron_input():
+def test_initial_state_and_feedforward_hidden_neuron_activation():
     for i in range(360):
         for j in range(50):
-            if np.abs(q2.a_hidden[i, j] - q1.neuron_input[1][i, j]) > tol:
+            if np.abs(q2.a_hidden[i, j] - q1.neuron_activation[1][i, j]) > tol:
+                msg = f"Neuron activation error at row: {i} col: {j}. "
+                msg += f"Got values {q2.a_hidden[i, j]=} and {q1.neuron_activation[1][i, j]=}"
+                assert False, msg
+
+
+def test_initial_state_and_feedforward_output_neuron_input():
+    for i in range(360):
+        for j in range(10):
+            if np.abs(q2.z_output[i, j] - q1.neuron_input[-1][i, j]) > tol:
                 msg = f"neuron input error at row: {i} col: {j}"
                 assert False, msg
 
 
-def test_initial_state_and_feedforward_output_neuron_activation():
-    for i in range(360):
-        for j in range(10):
-            if np.abs(q2.z_output[i, j] - q1.neuron_activation[-1][i, j]) > tol:
-                msg = f"neuron activation error at row: {i} col: {j}"
-                assert False, msg
-
-
 np.random.seed(1337)
-q3 = common.FFNN(X=digits.images, y=digits.target)
+q3 = common.FFNNClassifier(
+    input_data = digits.images,
+    true_output = digits.target,
+    hidden_layer_sizes = hidden_layer_sizes,
+    n_categories = n_categories,
+    n_epochs = n_epochs,
+    batch_size = batch_size,
+    hidden_layer_activation_function = common.sigmoid,
+    output_activation_function = common.softmax,
+    cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+    scaling = False,
+    verbose = False,
+    debug = False)
+
 q3._initial_state()
 q3.X_selection = q3.X_train
 q3.y_selection = q3.y_train
@@ -214,19 +224,19 @@ q3.feedforward()
 q3._backpropagation()
 
 np.random.seed(1337)
-q4 = FFNNSingle(X=digits.images, y=digits.target)
-q4._initial_state_single()
+q4 = FFNNSingle(input_data=digits.images, true_output=digits.target)
+q4._initial_state()
 q4.X_selection = q4.X_train
 q4.y_selection = q4.y_train
 q4.learning_rate = 0.1
 q4.lambd = 0
-q4.feedforward_single()
-q4._backpropagation_single()
+q4.feedforward()
+q4._backpropagation()
 
 def test_backpropagation_probabilities():
     for i in range(1437):
         for j in range(10):
-            if np.abs(q4.probabilities[i, j] - q3.neuron_input[-1][i, j]) > tol:
+            if np.abs(q4.probabilities[i, j] - q3.neuron_activation[-1][i, j]) > tol:
                 msg = f"probability error at row: {i} col: {j}"
                 assert False, msg
 
@@ -291,8 +301,8 @@ if __name__ == "__main__":
     test_initial_state_and_feedforward_output_biases()
     test_initial_state_and_feedforward_hidden_weights()
     test_initial_state_and_feedforward_hidden_biases()
-    test_initial_state_and_feedforward_hidden_neuron_input()
-    test_initial_state_and_feedforward_output_neuron_activation()
+    test_initial_state_and_feedforward_hidden_neuron_activation()
+    test_initial_state_and_feedforward_output_neuron_input()
     
     test_backpropagation_probabilities()
     test_backpropagation_output_error()
@@ -301,4 +311,4 @@ if __name__ == "__main__":
     test_backpropagation_hidden_error()
     test_backpropagation_output_weights()
     test_backpropagation_hidden_biases()
-    test_backpropagation_hidden_weights
+    test_backpropagation_hidden_weights()
