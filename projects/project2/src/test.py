@@ -135,8 +135,10 @@ q1 = common.FFNNClassifier(
     n_epochs = n_epochs,
     batch_size = batch_size,
     hidden_layer_activation_function = common.sigmoid,
+    hidden_layer_activation_function_derivative = common.sigmoid_derivative,
     output_activation_function = common.softmax,
     cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+    scaling = False,
     verbose = False,
     debug = False)
 
@@ -181,19 +183,20 @@ def test_initial_state_and_feedforward_hidden_biases():
             assert False, msg
 
 
-def test_initial_state_and_feedforward_hidden_neuron_input():
+def test_initial_state_and_feedforward_hidden_neuron_activation():
     for i in range(360):
         for j in range(50):
-            if np.abs(q2.a_hidden[i, j] - q1.neuron_input[1][i, j]) > tol:
-                msg = f"neuron input error at row: {i} col: {j}"
+            if np.abs(q2.a_hidden[i, j] - q1.neuron_activation[1][i, j]) > tol:
+                msg = f"Neuron activation error at row: {i} col: {j}. "
+                msg += f"Got values {q2.a_hidden[i, j]=} and {q1.neuron_activation[1][i, j]=}"
                 assert False, msg
 
 
-def test_initial_state_and_feedforward_output_neuron_activation():
+def test_initial_state_and_feedforward_output_neuron_input():
     for i in range(360):
         for j in range(10):
-            if np.abs(q2.z_output[i, j] - q1.neuron_activation[-1][i, j]) > tol:
-                msg = f"neuron activation error at row: {i} col: {j}"
+            if np.abs(q2.z_output[i, j] - q1.neuron_input[-1][i, j]) > tol:
+                msg = f"neuron input error at row: {i} col: {j}"
                 assert False, msg
 
 
@@ -208,6 +211,7 @@ q3 = common.FFNNClassifier(
     hidden_layer_activation_function = common.sigmoid,
     output_activation_function = common.softmax,
     cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+    scaling = False,
     verbose = False,
     debug = False)
 
@@ -232,7 +236,7 @@ q4._backpropagation()
 def test_backpropagation_probabilities():
     for i in range(1437):
         for j in range(10):
-            if np.abs(q4.probabilities[i, j] - q3.neuron_input[-1][i, j]) > tol:
+            if np.abs(q4.probabilities[i, j] - q3.neuron_activation[-1][i, j]) > tol:
                 msg = f"probability error at row: {i} col: {j}"
                 assert False, msg
 
@@ -297,8 +301,8 @@ if __name__ == "__main__":
     test_initial_state_and_feedforward_output_biases()
     test_initial_state_and_feedforward_hidden_weights()
     test_initial_state_and_feedforward_hidden_biases()
-    test_initial_state_and_feedforward_hidden_neuron_input()
-    test_initial_state_and_feedforward_output_neuron_activation()
+    test_initial_state_and_feedforward_hidden_neuron_activation()
+    test_initial_state_and_feedforward_output_neuron_input()
     
     test_backpropagation_probabilities()
     test_backpropagation_output_error()
