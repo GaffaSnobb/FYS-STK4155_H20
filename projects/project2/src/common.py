@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+import numba
 
 def polynomial_1d(x, *beta):
     """
@@ -228,6 +229,7 @@ def to_categorical(y, num_classes=None, dtype='float32'):
     return categorical
 
 
+@numba.njit
 def sigmoid(x):
     """
     Sigmoid function.
@@ -240,6 +242,7 @@ def sigmoid(x):
     return 1/(1 + np.exp(-x))
 
 
+@numba.njit
 def sigmoid_derivative(x):
     """
     Derivative of the sigmoid function.
@@ -255,6 +258,7 @@ def sigmoid_derivative(x):
     return val*(1 - val)
 
 
+@numba.njit
 def cross_entropy_derivative_with_softmax(y_predicted, y_actual):
     """
     Derivative of cross entropy cost function.
@@ -262,6 +266,7 @@ def cross_entropy_derivative_with_softmax(y_predicted, y_actual):
     return y_predicted - y_actual
 
 
+@numba.njit
 def softmax(z):
     """
     Softmax activation function.
@@ -272,18 +277,22 @@ def softmax(z):
     return exponential_term/np.sum(exponential_term, axis=1, keepdims=True)
 
 
+@numba.njit
 def linear(z):
     return z
 
 
+@numba.njit
 def relu(x): 
     return np.maximum(0, x)
 
 
+@numba.njit
 def relu_derivative(x):
     return (0 < x).astype("int")
 
 
+@numba.njit
 def mse_derivative(y_predicted, y_actual):
     return 2/y_actual.shape[0]*(y_predicted - y_actual)
 
