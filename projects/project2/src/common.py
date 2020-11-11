@@ -46,6 +46,27 @@ def mean_squared_error(x, y):
     return np.mean((x - y)**2)
 
 
+def r_squared(y_observed, y_predicted):
+    """
+    Calculate the score R**2.
+    
+    Parameters
+    ----------
+    y_observed : numpy.ndarray
+        Observed values.
+    
+    y_predicted : numpy.ndarray
+        Predicted values.
+    
+    Returns
+    -------
+    : numpy.ndarray
+        The R**2 score.
+    """
+    return 1 - np.sum((y_observed - y_predicted)**2)/\
+        np.sum((y_observed - np.mean(y_observed))**2)
+
+
 def step_length(t, t0, t1):
     return t0/(t + t1)
 
@@ -208,19 +229,30 @@ def to_categorical(y, num_classes=None, dtype='float32'):
 
 
 def sigmoid(x):
+    """
+    Sigmoid function.
+    
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Input parameter.
+    """
     return 1/(1 + np.exp(-x))
 
 
 def sigmoid_derivative(x):
     """
     Derivative of the sigmoid function.
+
     Parameters
     ----------
     x : numpy.ndarray
         Input parameter.
     """
-    exponential_term = np.exp(-x)
-    return exponential_term/(1 + exponential_term)**2
+    # exponential_term = np.exp(-x)
+    # return exponential_term/(1 + exponential_term)**2
+    val = sigmoid(x)
+    return val*(1 - val)
 
 
 def cross_entropy_derivative(y_predicted, y_actual):
@@ -242,6 +274,18 @@ def softmax(z):
 
 def linear(z):
     return z
+
+
+def relu(x):
+    return np.maximum(0, x)
+
+
+def relu_derivative(x):
+    return (0 < x).astype("int")
+
+
+def mse_derivative(y_predicted, y_actual):
+    return 2/y_actual.shape[0]*(y_predicted - y_actual)
 
 class _StatTools:
     def __init__(self, n_data_total, poly_degree, init_beta=None):
@@ -409,15 +453,23 @@ class _StatTools:
         return mse_train, mse_test
 
 
-class FFNN:
+class _FFNN:
     """
     Class implementation of a feedforward neural network.
     """
-    def __init__(self, input_data, true_output, hidden_layer_sizes=(50,),
-        n_categories=10, n_epochs=50, batch_size=20,
-        hidden_layer_activation_function=sigmoid,
-        output_activation_function=softmax,
-        cost_function=cross_entropy_derivative, verbose=False, debug=False):
+    def __init__(self,
+        input_data,
+        true_output,
+        hidden_layer_sizes,
+        n_categories,
+        n_epochs,
+        batch_size,
+        hidden_layer_activation_function = sigmoid,
+        hidden_layer_activation_function_derivative = sigmoid_derivative,
+        output_activation_function = softmax,
+        cost_function = cross_entropy_derivative,
+        verbose = False,
+        debug = False):
         """
         verbose : bool
             Toggle verbose mode on / off.
@@ -437,6 +489,12 @@ class FFNN:
             print(msg)
             sys.exit()
 
+        if not callable(hidden_layer_activation_function_derivative):
+            msg = f"hidden_layer_activation_function must be callable!"
+            msg += f" Got {type(hidden_layer_activation_function_derivative)}."
+            print(msg)
+            sys.exit()
+
         if not callable(output_activation_function):
             msg = f"output_activation_function must be callable!"
             msg += f" Got {type(output_activation_function)}."
@@ -450,6 +508,7 @@ class FFNN:
             sys.exit()
 
         self.hidden_layer_activation_function = hidden_layer_activation_function
+        self.hidden_layer_activation_function_derivative = hidden_layer_activation_function_derivative
         self.output_activation_function = output_activation_function
         self.cost_function = cost_function
 
@@ -466,7 +525,7 @@ class FFNN:
         self.debug = debug
 
 
-    def _initial_state(self):
+    def _initial_state(self, parent_class, scaling=False):
         """
         Set the system to the correct state before training starts.
         Split the data into training and testing sets.  Initialize the
@@ -474,7 +533,30 @@ class FFNN:
         """
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
-        self.y_train = to_categorical(self.y_train)
+
+        if scaling:
+            self.X_mean = np.mean(self.X_train)
+            self.X_std = np.std(self.X_train)
+            self.X_train = (self.X_train - self.X_mean)/self.X_std
+            self.X_test = (self.X_test - self.X_mean)/self.X_std
+
+            self.y_mean = np.mean(self.y_train)
+            self.y_std = np.std(self.y_train)
+            self.y_train = (self.y_train - self.y_mean)/self.y_std
+            self.y_test = (self.y_test - self.y_mean)/self.y_std
+        
+        if parent_class == "classifier":
+            """
+            One-hot for classification problems.
+            """
+            self.y_train = to_categorical(self.y_train)
+        
+        elif parent_class == "regressor":
+            """
+            If y_train is not a one-hot matrix, it needs to be a column
+            vector.
+            """
+            self.y_train = self.y_train.reshape(-1, 1)
 
         self.hidden_weights = []
         self.hidden_biases = []
@@ -492,6 +574,7 @@ class FFNN:
             case.  The number of rows in the i'th layers hidden weights
             is equal to the number of neurons in the i-1'th layer.
             """
+            # loc = 1/np.sqrt(self.hidden_layer_sizes[i])
             hidden_weights_tmp = np.random.normal(size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
             self.hidden_weights.append(hidden_weights_tmp)
             hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[i], fill_value=0.01)
@@ -511,7 +594,6 @@ class FFNN:
         print(f"{sys._getframe().f_back.f_code.co_name} time: {self.stopwatch:.4f} s")
 
 
-class FFNNClassifier(FFNN):
     def feedforward(self):
         """
         Perform one feedforward.
@@ -528,24 +610,19 @@ class FFNNClassifier(FFNN):
             activation and neuron input for all neurons in all hidden
             layers.
             """
-            self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i] + self.hidden_biases[i]   # No expontential?
+            self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i] + self.hidden_biases[i]
+            # self.neuron_activation[i + 1] = self.neuron_input[i]@self.hidden_weights[i + 1] + self.hidden_biases[i + 1]
             self.neuron_input[i + 1] = self.hidden_layer_activation_function(self.neuron_activation[i + 1])
 
-        # self.neuron_activation[-1] = self.neuron_input[-2]@self.output_weights + self.output_biases
-        # self.neuron_activation[-1] = np.exp(self.neuron_input[-2]@self.output_weights + self.output_biases)
         self.neuron_activation[-1] = (self.neuron_input[-2]@self.output_weights + self.output_biases)
-        # self.neuron_input[-1] = np.exp(self.neuron_activation[-1])/np.sum(np.exp(self.neuron_activation[-1]), axis=1, keepdims=True)
-        self.neuron_input[-1] = self.output_activation_function(self.neuron_activation[-1])  # Messy with softmax. Lots of overflows.
-        
-        
-        # self.probabilities = self.neuron_activation[-1]/np.sum(self.neuron_activation[-1], axis=1, keepdims=True)
+        self.neuron_input[-1] = self.output_activation_function(self.neuron_activation[-1])
 
 
     def _backpropagation(self):
         self.error = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)  # Store error for output and hidden layers.
-        # self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)*sigmoid_derivative(self.neuron_activation[-1])
         self.error[-1] = self.cost_function(self.neuron_input[-1], self.y_selection)
-        self.error[-2] = self.output_weights@self.error[-1].T*sigmoid_derivative(self.neuron_activation[-2]).T
+        # self.error[-1] = 2/self.X_selection.shape[0]*(self.neuron_input[-1] - self.y_selection)
+        self.error[-2] = self.output_weights@self.error[-1].T*self.hidden_layer_activation_function_derivative(self.neuron_activation[-2]).T
 
         self.bias_gradient = np.zeros(shape=self.n_hidden_layers + 1, dtype=np.ndarray)
         self.bias_gradient[-1] = np.sum(self.error[-1], axis=0)  # Why axis 0 here?
@@ -560,7 +637,7 @@ class FFNNClassifier(FFNN):
             Loop backwards through the errors, bias and weight
             gradients.
             """
-            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*sigmoid_derivative(self.neuron_activation[i].T)
+            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*self.hidden_layer_activation_function_derivative(self.neuron_activation[i].T)
             self.bias_gradient[i] = np.sum(self.error[i], axis=1)
             self.weight_gradient[i] = self.error[i]@self.neuron_input[i - 1]
 
@@ -574,6 +651,12 @@ class FFNNClassifier(FFNN):
             self.hidden_weights[i] -= self.learning_rate*(self.weight_gradient[i - 1].T) + self.lambd*(self.hidden_weights[i])
             self.hidden_biases[i] -= self.learning_rate*(self.bias_gradient[i - 1])
 
+        if self.debug:
+            print("BACKPROPAGATION")
+            print(f"{self.error[-1].shape=}")
+            print(f"{self.neuron_input[-1].shape=}")
+            print(f"{self.y_selection.shape=}")
+            
 
     def train_neural_network(self, learning_rate=0.1, lambd=0):
         """
@@ -607,7 +690,44 @@ class FFNNClassifier(FFNN):
                 self.feedforward()
                 self._backpropagation()
 
+                if self.debug: break
+            if self.debug: break
+
         if self.verbose: self.stop_timing()
+
+
+class FFNNClassifier(_FFNN):
+    def __init__(self, 
+        input_data,
+        true_output,
+        hidden_layer_sizes,
+        n_categories,
+        n_epochs,
+        batch_size,
+        hidden_layer_activation_function = sigmoid,
+        hidden_layer_activation_function_derivative = sigmoid_derivative,
+        output_activation_function = softmax,
+        cost_function = cross_entropy_derivative,
+        verbose = False,
+        debug = False):
+        
+        super(FFNNClassifier, self).__init__(
+            input_data,
+            true_output,
+            hidden_layer_sizes,
+            n_categories,
+            n_epochs,
+            batch_size,
+            hidden_layer_activation_function,
+            hidden_layer_activation_function_derivative,
+            output_activation_function,
+            cost_function,
+            verbose,
+            debug)
+
+
+    def _initial_state(self):
+        super(FFNNClassifier, self)._initial_state(parent_class="classifier")
 
 
     def predict(self, X):
@@ -618,5 +738,92 @@ class FFNNClassifier(FFNN):
         return score
 
 
-class FFNNRegressor(FFNN):
-    pass
+class FFNNRegressor(_FFNN):
+    def __init__(self, 
+        input_data,
+        true_output,
+        hidden_layer_sizes,
+        n_categories,
+        n_epochs,
+        batch_size,
+        hidden_layer_activation_function = sigmoid,
+        hidden_layer_activation_function_derivative = sigmoid_derivative,
+        output_activation_function = linear,
+        cost_function = cross_entropy_derivative,
+        verbose = False,
+        debug = False,
+        scaling = False):
+        
+        super(FFNNRegressor, self).__init__(
+            input_data,
+            true_output,
+            hidden_layer_sizes,
+            n_categories,
+            n_epochs,
+            batch_size,
+            hidden_layer_activation_function,
+            hidden_layer_activation_function_derivative,
+            output_activation_function,
+            cost_function,
+            verbose,
+            debug)
+
+
+        self.scaling = scaling
+
+
+    def _initial_state(self):
+        super(FFNNRegressor, self)._initial_state(parent_class="regressor", scaling=self.scaling)
+
+
+    def predict(self, X):
+        self.X_selection = X
+        self.feedforward()
+        return self.neuron_input[-1].ravel()
+
+
+    def mse(self):
+        y_train_prediction = self.predict(self.X_train)
+        y_test_prediction = self.predict(self.X_test)
+        mse_train = mean_squared_error(self.y_train, y_train_prediction)
+        mse_test = mean_squared_error(self.y_test, y_test_prediction)
+
+        return mse_train, mse_test
+
+
+    def r_squared(self):
+        y_train_prediction = self.predict(self.X_train)
+        y_test_prediction = self.predict(self.X_test)
+        r_train = r_squared(self.y_train, y_train_prediction)
+        r_test = r_squared(self.y_test, y_test_prediction)
+
+        return r_train, r_test
+
+    
+    def score(self):
+        y_train_prediction = self.predict(self.X_train)
+        y_test_prediction = self.predict(self.X_test)
+        
+        self.mse_train = mean_squared_error(self.y_train, y_train_prediction)
+        self.mse_test = mean_squared_error(self.y_test, y_test_prediction)
+        self.r_train = r_squared(self.y_train, y_train_prediction)
+        self.r_test = r_squared(self.y_test, y_test_prediction)
+
+
+    def train_neural_network(self, learning_rate=0.1, lambd=0):
+        """
+        Train the neural network.
+        """
+        self._initial_state()
+        if self.verbose: self.start_timing()
+        self.learning_rate = learning_rate
+        self.lambd = lambd
+
+        self.X_selection = self.X_train
+        self.y_selection = self.y_train
+
+        for _ in range(self.n_epochs):
+            self.feedforward()
+            self._backpropagation()
+
+        if self.verbose: self.stop_timing()

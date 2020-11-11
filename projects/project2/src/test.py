@@ -34,7 +34,7 @@ class Example2D(common._StatTools):
         super(Example2D, self).__init__(n_data_total, poly_degree, init_beta)
 
 
-class FFNNSingle(common.FFNN):
+class FFNNSingle(common._FFNN):
     def __init__(self, input_data, true_output, verbose=False):
         """
         Parameters
@@ -210,7 +210,7 @@ q3 = common.FFNNClassifier(
     cost_function = common.cross_entropy_derivative,
     verbose = False,
     debug = False)
-    
+
 q3._initial_state()
 q3.X_selection = q3.X_train
 q3.y_selection = q3.y_train
