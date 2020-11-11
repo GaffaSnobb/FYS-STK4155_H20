@@ -567,11 +567,18 @@ class _FFNN:
         self.debug = debug
 
 
-    def _initial_state(self, parent_class):
+    def _initial_state(self, subclass):
         """
         Set the system to the correct state before training starts.
         Split the data into training and testing sets.  Initialize the
         weights and biases for the hidden layer(s) and the output layer.
+
+        Parameters
+        ----------
+        subclass : str
+            _initial_state implementation in subclasses passes either
+            'classifier' or 'regressor' to change shape of y_train and
+            y_test.
         """
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True) 
@@ -587,13 +594,13 @@ class _FFNN:
             self.y_train = (self.y_train - self.y_mean)/self.y_std
             self.y_test = (self.y_test - self.y_mean)/self.y_std
         
-        if parent_class == "classifier":
+        if subclass == "classifier":
             """
             One-hot for classification problems.
             """
             self.y_train = to_categorical(self.y_train)
         
-        elif parent_class == "regressor":
+        elif subclass == "regressor":
             """
             If y_train is not a one-hot matrix, it needs to be a column
             vector.
@@ -601,18 +608,14 @@ class _FFNN:
             self.y_train = self.y_train.reshape(-1, 1)
             self.y_test = self.y_test.reshape(-1, 1)    # I spent ONE WEEK debugging, only to find that this single line of code solved literally everything.
 
-        # self.hidden_weights = []
         self.hidden_weights = np.zeros(shape=self.n_hidden_layers, dtype=np.ndarray)
-        # self.hidden_biases = []
         self.hidden_biases = np.zeros(shape=self.n_hidden_layers, dtype=np.ndarray)
 
         # Special case for the first hidden layer.
-        self.hidden_weights[0] = np.random.normal(size=(self.n_features, self.hidden_layer_sizes[0]))
-        # hidden_weights_tmp = np.random.normal(size=(self.n_features, self.hidden_layer_sizes[0]))
-        # self.hidden_weights.append(hidden_weights_tmp)
-        self.hidden_biases[0] = np.full(shape=self.hidden_layer_sizes[0], fill_value=0.01)
-        # hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[0], fill_value=0.01)
-        # self.hidden_biases.append(hidden_biases_tmp)
+        self.hidden_weights[0] = np.random.normal(
+            size=(self.n_features, self.hidden_layer_sizes[0]))
+        self.hidden_biases[0] = np.full(
+            shape=self.hidden_layer_sizes[0], fill_value=0.01)
 
         for i in range(1, self.n_hidden_layers):
             """
@@ -621,16 +624,14 @@ class _FFNN:
             case.  The number of rows in the i'th layers hidden weights
             is equal to the number of neurons in the i-1'th layer.
             """
-            # loc = 1/np.sqrt(self.hidden_layer_sizes[i])
-            self.hidden_weights[i] = np.random.normal(size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
-            # hidden_weights_tmp = np.random.normal(size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
-            # self.hidden_weights.append(hidden_weights_tmp)
-            self.hidden_biases[i] = np.full(shape=self.hidden_layer_sizes[i], fill_value=0.01)
-            # hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[i], fill_value=0.01)
-            # self.hidden_biases.append(hidden_biases_tmp)
+            self.hidden_weights[i] = np.random.normal(
+                size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
+            self.hidden_biases[i] = np.full(
+                shape=self.hidden_layer_sizes[i], fill_value=0.01)
 
         # Weights and biases for the output layer.
-        self.output_weights = np.random.normal(size=(self.hidden_layer_sizes[-1], self.n_categories))
+        self.output_weights = np.random.normal(
+            size=(self.hidden_layer_sizes[-1], self.n_categories))
         self.output_biases = np.full(shape=self.n_categories, fill_value=0.01)
 
 
@@ -760,11 +761,6 @@ class _FFNN:
         if self.verbose: self.stop_timing()
 
 
-class FFNNClassifier(_FFNN):
-    def _initial_state(self):
-        super(FFNNClassifier, self)._initial_state(parent_class="classifier")
-
-
     def predict(self, X):
         """
         Predict by performing one feedforward using the input data of
@@ -774,9 +770,20 @@ class FFNNClassifier(_FFNN):
         ----------
         X : numpy.ndarray
             Data to predict.
+
+        Returns
+        -------
+        self.neuron_activation[-1] : numpy.ndarray
+            Prediction.  Be mindful of the shape.
         """
         self.X_selection = X
         self.feedforward()
+        return self.neuron_activation[-1]
+
+
+class FFNNClassifier(_FFNN):
+    def _initial_state(self):
+        super(FFNNClassifier, self)._initial_state(subclass="classifier")
 
     
     def score(self, X, y):
@@ -802,76 +809,24 @@ class FFNNClassifier(_FFNN):
         return score
         
 
-
 class FFNNRegressor(_FFNN):
-    def __init__(self, 
-        input_data,
-        true_output,
-        hidden_layer_sizes,
-        n_categories,
-        n_epochs,
-        batch_size,
-        hidden_layer_activation_function = sigmoid,
-        hidden_layer_activation_function_derivative = sigmoid_derivative,
-        output_activation_function = linear,
-        cost_function_derivative = cross_entropy_derivative_with_softmax,
-        verbose = False,
-        debug = False,
-        scaling = False):
-        
-        super(FFNNRegressor, self).__init__(
-            input_data,
-            true_output,
-            hidden_layer_sizes,
-            n_categories,
-            n_epochs,
-            batch_size,
-            hidden_layer_activation_function,
-            hidden_layer_activation_function_derivative,
-            output_activation_function,
-            cost_function_derivative,
-            verbose,
-            debug)
-
-
-        self.scaling = scaling
-
-
     def _initial_state(self):
-        super(FFNNRegressor, self)._initial_state(parent_class="regressor")
-
-
-    def predict(self, X):
-        self.X_selection = X
-        self.feedforward()
-        return self.neuron_activation[-1]
-
-
-    def mse(self):
-        y_train_prediction = self.predict(self.X_train)
-        y_test_prediction = self.predict(self.X_test)
-        mse_train = mean_squared_error(self.y_train, y_train_prediction)
-        mse_test = mean_squared_error(self.y_test, y_test_prediction)
-
-        return mse_train, mse_test
-
-
-    def r_squared(self):
-        y_train_prediction = self.predict(self.X_train)
-        y_test_prediction = self.predict(self.X_test)
-        r_train = r_squared(self.y_train, y_train_prediction)
-        r_test = r_squared(self.y_test, y_test_prediction)
-
-        return r_train, r_test
+        """
+        Apply _initial_state with 'regressor' parameter to shape the y
+        data correctly.
+        """
+        super(FFNNRegressor, self)._initial_state(subclass="regressor")
 
     
     def score(self):
+        """
+        Calculate MSE and r score for test and train datasets.
+        """
         y_train_prediction = self.predict(self.X_train)
         y_test_prediction = self.predict(self.X_test)        
         self.mse_train = mean_squared_error(self.y_train, y_train_prediction)
         self.mse_test = mean_squared_error(self.y_test, y_test_prediction)
-        print("SHAPES!!")
-        print(f"{self.y_train.shape=}")
-        print(f"{y_train_prediction.shape=}")
         self.r_train = r_squared(self.y_train, y_train_prediction)
         self.r_test = r_squared(self.y_test, y_test_prediction)
+
+        return self.mse_train, self.mse_test, self.r_train, self.r_test
