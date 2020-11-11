@@ -601,14 +601,18 @@ class _FFNN:
             self.y_train = self.y_train.reshape(-1, 1)
             self.y_test = self.y_test.reshape(-1, 1)    # I spent ONE WEEK debugging, only to find that this single line of code solved literally everything.
 
-        self.hidden_weights = []
-        self.hidden_biases = []
+        # self.hidden_weights = []
+        self.hidden_weights = np.zeros(shape=self.n_hidden_layers, dtype=np.ndarray)
+        # self.hidden_biases = []
+        self.hidden_biases = np.zeros(shape=self.n_hidden_layers, dtype=np.ndarray)
 
         # Special case for the first hidden layer.
-        hidden_weights_tmp = np.random.normal(size=(self.n_features, self.hidden_layer_sizes[0]))
-        self.hidden_weights.append(hidden_weights_tmp)
-        hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[0], fill_value=0.01)
-        self.hidden_biases.append(hidden_biases_tmp)
+        self.hidden_weights[0] = np.random.normal(size=(self.n_features, self.hidden_layer_sizes[0]))
+        # hidden_weights_tmp = np.random.normal(size=(self.n_features, self.hidden_layer_sizes[0]))
+        # self.hidden_weights.append(hidden_weights_tmp)
+        self.hidden_biases[0] = np.full(shape=self.hidden_layer_sizes[0], fill_value=0.01)
+        # hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[0], fill_value=0.01)
+        # self.hidden_biases.append(hidden_biases_tmp)
 
         for i in range(1, self.n_hidden_layers):
             """
@@ -618,10 +622,12 @@ class _FFNN:
             is equal to the number of neurons in the i-1'th layer.
             """
             # loc = 1/np.sqrt(self.hidden_layer_sizes[i])
-            hidden_weights_tmp = np.random.normal(size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
-            self.hidden_weights.append(hidden_weights_tmp)
-            hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[i], fill_value=0.01)
-            self.hidden_biases.append(hidden_biases_tmp)
+            self.hidden_weights[i] = np.random.normal(size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
+            # hidden_weights_tmp = np.random.normal(size=(self.hidden_layer_sizes[i-1], self.hidden_layer_sizes[i]))
+            # self.hidden_weights.append(hidden_weights_tmp)
+            self.hidden_biases[i] = np.full(shape=self.hidden_layer_sizes[i], fill_value=0.01)
+            # hidden_biases_tmp = np.full(shape=self.hidden_layer_sizes[i], fill_value=0.01)
+            # self.hidden_biases.append(hidden_biases_tmp)
 
         # Weights and biases for the output layer.
         self.output_weights = np.random.normal(size=(self.hidden_layer_sizes[-1], self.n_categories))
