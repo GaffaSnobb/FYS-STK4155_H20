@@ -12,14 +12,15 @@ def classification():
     q1 = common.FFNNClassifier(
         input_data = X,
         true_output = y,
-        hidden_layer_sizes=(50, 20, 20),
+        hidden_layer_sizes=(50,),
         n_categories = 10,
         n_epochs = 50,
         batch_size = 20,
         hidden_layer_activation_function = common.sigmoid,
         hidden_layer_activation_function_derivative = common.sigmoid_derivative,
         output_activation_function = common.softmax,
-        cost_function = common.cross_entropy_derivative,
+        cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+        scaling = False,
         verbose = True,
         debug = False)
 
@@ -29,19 +30,13 @@ def classification():
 
     for i in range(N):
         q1.train_neural_network(learning_rate=learning_rates[i])
-        scores[i] = q1.predict(q1.X_test)
+        scores[i] = q1.score(q1.X_test, q1.y_test)
         print(scores[i])
-
 
     plt.plot(learning_rates, scores)
     plt.xlabel("learning rate")
     plt.ylabel("score")
     plt.show()
-
-    # q1.train_neural_network(learning_rate=1e-2)
-    # q1.predict(q1.X_test)
-    # print(np.argmax(q1.neuron_activation[-1], axis=1))
-    # print(q1.y_test)
 
 
 def regression():
@@ -55,22 +50,46 @@ def regression():
     # y = common.franke_function(x1, x2)
 
     X = x1
-    y = x1 + x1**2
+    y = x1 + x1**2 + np.random.normal(size=n_data_total)*0.1
 
     q1 = common.FFNNRegressor(
         input_data = X,
         true_output = y,
-        hidden_layer_sizes=(100, 50, 25),
+        hidden_layer_sizes=(50, 50),
         n_categories = 1,
-        n_epochs = 70,
+        n_epochs = 300,
         batch_size = 30,
         hidden_layer_activation_function = common.sigmoid,
         hidden_layer_activation_function_derivative = common.sigmoid_derivative,
         output_activation_function = common.linear,
-        cost_function = common.mse_derivative,
+        cost_function_derivative = common.mse_derivative,
         verbose = True,
         debug = False,
-        scaling = True)
+        scaling = False)
+
+
+    # q1.train_neural_network(learning_rate=0.06)
+    # q1.X_selection = q1.X_test
+    # q1.feedforward()
+    # r_test = 1 - np.sum((q1.y_test - q1.neuron_input[-1])**2)/np.sum((q1.y_test - np.mean(q1.y_test))**2)
+    # print(f"{r_test=}")
+    # print("numerator test: ", np.sum((q1.y_test - q1.neuron_input[-1])**2))
+    # print("denominator test ", np.sum((q1.y_test - np.mean(q1.y_test))**2))
+    # print(f"{q1.y_test.shape=}")
+    # print(f"{q1.neuron_input[-1].shape=}")
+    # plt.plot(q1.X_test, q1.neuron_input[-1], "r.",label="test")
+    
+    # q1.X_selection = q1.X_train
+    # q1.feedforward()
+    # r_train = 1 - np.sum((q1.y_train - q1.neuron_input[-1])**2)/np.sum((q1.y_train - np.mean(q1.y_train))**2)
+    # print(f"{r_train=}")
+
+
+    # plt.plot(q1.X_train, q1.neuron_input[-1], "b.",label="train")
+    # plt.plot(X, y, label="actual")
+    # plt.legend()
+    # plt.show()
+
 
     N = 10
     learning_rates = np.logspace(-3, -1, N)
@@ -86,7 +105,6 @@ def regression():
         mse_test[i] = q1.mse_test
         r_train[i] = q1.r_train
         r_test[i] = q1.r_test
-        # break
 
 
     plt.plot(learning_rates, mse_train, label="train")
@@ -104,12 +122,24 @@ def regression():
     plt.show()
 
 
-if __name__ == "__main__":
-    # classification()
-    regression()
 
-    # for learning_rate in np.logspace(-5, 0, 8):
-    #     q1.train_neural_network_single(learning_rate)
-    #     score = q1.predict_single(q1.X_test)
-    #     print(f"score: {score} for learning rate: {learning_rate}")
+def logistic():
+    q1 = common.FFNNRegressor(
+        input_data = X,
+        true_output = y,
+        hidden_layer_sizes=(),# No hidden layers for logistic!
+        n_categories = 1,
+        n_epochs = 300,
+        batch_size = 30,
+        hidden_layer_activation_function = common.sigmoid,
+        hidden_layer_activation_function_derivative = common.sigmoid_derivative,
+        output_activation_function = common.softmax,
+        cost_function_derivative = common.mse_derivative,
+        verbose = True,
+        debug = False,
+        scaling = False)
+
+if __name__ == "__main__":
+    classification()
+    # regression()
     pass
