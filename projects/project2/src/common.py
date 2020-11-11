@@ -282,24 +282,20 @@ def linear(x):
     return x
 
 
-@numba.njit
 def relu(x): 
     return np.maximum(0, x)
 
 
-# @numba.njit
 def relu_derivative(x):
     return (0 < x).astype(int)
 
 
-@numba.njit
 def leaky_relu(x):
     y = np.copy(x)  # I think we must do this to not alter the actual x values.
     y[y < 0] *= 0.01
     return y
 
 
-@numba.njit
 def leaky_relu_derivative(x):
     y = np.copy(x)  # I think we must do this to not alter the actual x values.
     y[y > 0] = 1
