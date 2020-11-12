@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import neural_network as nn
+import activation_functions as af
 import common
 
 
@@ -12,17 +14,17 @@ def regression_relu():
     for i in range(n_data_total): X[i] = x1[i], x2[i]
     y = common.franke_function(x1, x2)
 
-    q1 = common.FFNNRegressor(
+    q1 = nn.FFNNRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(50, 25, 25),
         n_categories = 1,
         n_epochs = 300,
         batch_size = 40,
-        hidden_layer_activation_function = common.relu,
-        hidden_layer_activation_function_derivative = common.relu_derivative,
-        output_activation_function = common.linear,
-        cost_function_derivative = common.mse_derivative,
+        hidden_layer_activation_function = af.relu,
+        hidden_layer_activation_function_derivative = af.relu_derivative,
+        output_activation_function = af.linear,
+        cost_function_derivative = af.mse_derivative,
         verbose = True,
         debug = False,
         scaling = True)
@@ -77,17 +79,17 @@ def regression_leaky_relu():
     for i in range(n_data_total): X[i] = x1[i], x2[i]
     y = common.franke_function(x1, x2)
 
-    q1 = common.FFNNRegressor(
+    q1 = nn.FFNNRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(50, 25, 25),
         n_categories = 1,
         n_epochs = 300,
         batch_size = 40,
-        hidden_layer_activation_function = common.leaky_relu,
-        hidden_layer_activation_function_derivative = common.leaky_relu_derivative,
-        output_activation_function = common.linear,
-        cost_function_derivative = common.mse_derivative,
+        hidden_layer_activation_function = af.leaky_relu,
+        hidden_layer_activation_function_derivative = af.leaky_relu_derivative,
+        output_activation_function = af.linear,
+        cost_function_derivative = af.mse_derivative,
         verbose = True,
         debug = False,
         scaling = True)
@@ -143,26 +145,26 @@ def regression_vary_hidden_layer_activation_function():
     for i in range(n_data_total): X[i] = x1[i], x2[i]
     y = common.franke_function(x1, x2)
 
-    q1 = common.FFNNRegressor(
+    q1 = nn.FFNNRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(50, 25, 25),
         n_categories = 1,
         n_epochs = 300,
         batch_size = 40,
-        hidden_layer_activation_function = common.sigmoid,
-        hidden_layer_activation_function_derivative = common.sigmoid_derivative,
-        output_activation_function = common.linear,
-        cost_function_derivative = common.mse_derivative,
+        hidden_layer_activation_function = af.sigmoid,
+        hidden_layer_activation_function_derivative = af.sigmoid_derivative,
+        output_activation_function = af.linear,
+        cost_function_derivative = af.mse_derivative,
         verbose = True,
         debug = False,
         scaling = True)
 
 
     hidden_layer_activation_functions =\
-        [common.sigmoid, common.relu, common.leaky_relu]
+        [af.sigmoid, af.relu, af.leaky_relu]
     hidden_layer_activation_function_derivatives =\
-        [common.sigmoid_derivative, common.relu_derivative, common.leaky_relu_derivative]
+        [af.sigmoid_derivative, af.relu_derivative, af.leaky_relu_derivative]
     function_names = ["sigmoid", "relu", "leaky"]
     
     N = 10

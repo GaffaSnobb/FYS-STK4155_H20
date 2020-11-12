@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import datasets
+import activation_functions as af
+import neural_network as nn
 import common
 
 def classification():
@@ -9,17 +11,17 @@ def classification():
     X = digits.images
     y = digits.target
     
-    q1 = common.FFNNClassifier(
+    q1 = nn.FFNNClassifier(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(50,),
         n_categories = 10,
         n_epochs = 50,
         batch_size = 20,
-        hidden_layer_activation_function = common.sigmoid,
-        hidden_layer_activation_function_derivative = common.sigmoid_derivative,
-        output_activation_function = common.softmax,
-        cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+        hidden_layer_activation_function = af.sigmoid,
+        hidden_layer_activation_function_derivative = af.sigmoid_derivative,
+        output_activation_function = af.softmax,
+        cost_function_derivative = af.cross_entropy_derivative_with_softmax,
         scaling = False,
         verbose = True,
         debug = False)
@@ -48,17 +50,17 @@ def regression_vary_learning_rate():
     for i in range(n_data_total): X[i] = x1[i], x2[i]
     y = common.franke_function(x1, x2)
 
-    q1 = common.FFNNRegressor(
+    q1 = nn.FFNNRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(50, 25, 25),
         n_categories = 1,
         n_epochs = 300,
         batch_size = 40,
-        hidden_layer_activation_function = common.sigmoid,
-        hidden_layer_activation_function_derivative = common.sigmoid_derivative,
-        output_activation_function = common.linear,
-        cost_function_derivative = common.mse_derivative,
+        hidden_layer_activation_function = af.sigmoid,
+        hidden_layer_activation_function_derivative = af.sigmoid_derivative,
+        output_activation_function = af.linear,
+        cost_function_derivative = af.mse_derivative,
         verbose = True,
         debug = False,
         scaling = True)
@@ -104,23 +106,23 @@ def regression_vary_learning_rate():
 
 
 def logistic():
-    q1 = common.FFNNRegressor(
+    q1 = nn.FFNNRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(),# No hidden layers for logistic!
         n_categories = 1,
         n_epochs = 300,
         batch_size = 30,
-        hidden_layer_activation_function = common.sigmoid,
-        hidden_layer_activation_function_derivative = common.sigmoid_derivative,
-        output_activation_function = common.softmax,
-        cost_function_derivative = common.mse_derivative,
+        hidden_layer_activation_function = af.sigmoid,
+        hidden_layer_activation_function_derivative = af.sigmoid_derivative,
+        output_activation_function = af.softmax,
+        cost_function_derivative = af.mse_derivative,
         verbose = True,
         debug = False,
         scaling = False)
 
 
 if __name__ == "__main__":
-    # classification()
-    regression_vary_learning_rate()
+    classification()
+    # regression_vary_learning_rate()
     pass

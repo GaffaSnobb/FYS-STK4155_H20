@@ -1,6 +1,8 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn import datasets
+import activation_functions as af
+import neural_network as nn
 import common
 
 
@@ -34,7 +36,7 @@ class Example2D(common._StatTools):
         super(Example2D, self).__init__(n_data_total, poly_degree, init_beta)
 
 
-class FFNNSingle(common._FFNN):
+class FFNNSingle(nn._FFNN):
     def __init__(self, input_data, true_output, verbose=False):
         """
         Parameters
@@ -57,9 +59,9 @@ class FFNNSingle(common._FFNN):
             n_categories = n_categories,
             n_epochs = n_epochs,
             batch_size = batch_size,
-            hidden_layer_activation_function = common.sigmoid,
-            output_activation_function = common.softmax,
-            cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+            hidden_layer_activation_function = af.sigmoid,
+            output_activation_function = af.softmax,
+            cost_function_derivative = af.cross_entropy_derivative_with_softmax,
             verbose = verbose,
             debug = False)
 
@@ -72,7 +74,7 @@ class FFNNSingle(common._FFNN):
         """
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
-        self.y_train = common.to_categorical(self.y_train)
+        self.y_train = nn.to_categorical(self.y_train)
 
         # Weights and biases for the hidden layer.
         self.hidden_weights = np.random.normal(size=(self.n_features, self.n_hidden_neurons))
@@ -107,7 +109,7 @@ class FFNNSingle(common._FFNN):
         """
         Perform one feedforward.
         """
-        self.a_hidden = common.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
+        self.a_hidden = af.sigmoid(self.X_selection@self.hidden_weights + self.hidden_biases)
         self.z_output = self.a_hidden@self.output_weights + self.output_biases
         exponential_term = np.exp(self.z_output)
         self.probabilities = exponential_term/np.sum(exponential_term, axis=1, keepdims=True)
@@ -127,17 +129,17 @@ tol = 1e-10
 digits = datasets.load_digits()
 
 np.random.seed(1337)
-q1 = common.FFNNClassifier(
+q1 = nn.FFNNClassifier(
     input_data = digits.images,
     true_output = digits.target,
     hidden_layer_sizes = hidden_layer_sizes,
     n_categories = n_categories,
     n_epochs = n_epochs,
     batch_size = batch_size,
-    hidden_layer_activation_function = common.sigmoid,
-    hidden_layer_activation_function_derivative = common.sigmoid_derivative,
-    output_activation_function = common.softmax,
-    cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+    hidden_layer_activation_function = af.sigmoid,
+    hidden_layer_activation_function_derivative = af.sigmoid_derivative,
+    output_activation_function = af.softmax,
+    cost_function_derivative = af.cross_entropy_derivative_with_softmax,
     scaling = False,
     verbose = False,
     debug = False)
@@ -201,16 +203,16 @@ def test_initial_state_and_feedforward_output_neuron_input():
 
 
 np.random.seed(1337)
-q3 = common.FFNNClassifier(
+q3 = nn.FFNNClassifier(
     input_data = digits.images,
     true_output = digits.target,
     hidden_layer_sizes = hidden_layer_sizes,
     n_categories = n_categories,
     n_epochs = n_epochs,
     batch_size = batch_size,
-    hidden_layer_activation_function = common.sigmoid,
-    output_activation_function = common.softmax,
-    cost_function_derivative = common.cross_entropy_derivative_with_softmax,
+    hidden_layer_activation_function = af.sigmoid,
+    output_activation_function = af.softmax,
+    cost_function_derivative = af.cross_entropy_derivative_with_softmax,
     scaling = False,
     verbose = False,
     debug = False)
