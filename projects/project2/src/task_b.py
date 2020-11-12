@@ -191,6 +191,9 @@ def regression_vary_regularization_parameters():
 
 
 def regression_vary_learning_rate_and_regularization_parameter():
+    """
+    This is handled by task c.
+    """
     # np.random.seed(1337)
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
@@ -253,23 +256,6 @@ def regression_vary_learning_rate_and_regularization_parameter():
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     ax.tick_params(axis='y', rotation=0)
     plt.show()
-
-
-def logistic():
-    q1 = nn.FFNNRegressor(
-        input_data = X,
-        true_output = y,
-        hidden_layer_sizes=(),# No hidden layers for logistic!
-        n_categories = 1,
-        n_epochs = 300,
-        batch_size = 30,
-        hidden_layer_activation_function = af.sigmoid,
-        hidden_layer_activation_function_derivative = af.sigmoid_derivative,
-        output_activation_function = af.softmax,
-        cost_function_derivative = af.mse_derivative,
-        verbose = True,
-        debug = False,
-        scaling = False)
 
 
 def regression_compare_neural_network_and_ols_ridge():
@@ -342,6 +328,6 @@ if __name__ == "__main__":
     # classification()
     # regression_vary_learning_rate()
     # regression_vary_regularization_parameters()
-    regression_vary_learning_rate_and_regularization_parameter()
-    # regression_compare_neural_network_and_ols_ridge()
+    # regression_vary_learning_rate_and_regularization_parameter()
+    regression_compare_neural_network_and_ols_ridge()
     pass
