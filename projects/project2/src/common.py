@@ -376,39 +376,27 @@ class _StatTools:
 class Regression:
     using_ridge = False # For suppressing repeated messages.
     using_lasso = False # For suppressing repeated messages.
-    def __init__(self, n_data_points, noise_factor, max_poly_degree,
-            split_scale=True):
+    def __init__(self, design_matrix, true_output, polynomial_degree, scale=True):
         """
-        Create design matrix self.X and observed function values
-        self.y_observed based on randomly drawn numbers in [0, 1).
+        design_matrix : numpy.ndarray
+            A design matrix.
 
-        Parameters
-        ----------
-        n_data_points : int
-            The total number of data points.
+        true_output : numpy.ndarray
+            The true output.
 
-        noise_factor : float
-            How much noise to add.  The noise is randomly drawn numbers
-            from the standard normal distribution with this factor
-            multiplied.
+        polynomial_degree : int
+            The polynomial degree used to construct the design matrix.
 
-        max_poly_degree : int
-            The maximum polynomial degree.
-
-        split_scale : boolean
-            For toggling split and scaling on / off.
+        scale : bool
+            Toggle scaling on / off.
         """
+        self.X = design_matrix
+        self.y = true_output
+        self.scale = scale
+        self.n_data_points = self.X.shape[0]
+        self.max_poly_degree = polynomial_degree
 
-        x1 = np.random.uniform(0, 1, n_data_points)
-        x2 = np.random.uniform(0, 1, n_data_points)
-        noise = noise_factor*np.random.randn(n_data_points)
-
-        self.y = franke_function(x1, x2) + noise
-        self.X = create_design_matrix_two_dependent_variables(x1, x2, n_data_points, max_poly_degree)
-        self.n_data_points = n_data_points
-        self.max_poly_degree = max_poly_degree
-        self.noise_factor = noise_factor
-        if split_scale: self._split_scale()
+        self._split_scale()
 
     
     def cross_validation(self, degree, folds, lambd=0, alpha=0,
@@ -438,8 +426,7 @@ class Regression:
 
         Returns
         -------
-        mse/folds : float
-            The mean squared error of the cross validation.
+        Nothing.  Fetch the values as class attributes.
         """
 
         if (lambd != 0) and (alpha != 0):
@@ -458,11 +445,11 @@ class Regression:
             print("Input polynomial degree cannot be larger than max_poly_degree.")
             return
         
-        X = self.X[:, :features(degree)] # Slice the correct number of features.
-
-        rest = self.n_data_points%folds # The leftover data points which will be excluded.
-        X = X[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
-        y = self.y[:self.n_data_points-rest] # Remove the rest to get equally sized folds.
+        X = self.X_train[:, :features(degree, n_dependent_variables=2)] # Slice the correct number of features.
+        n_data_points = X.shape[0]
+        rest = n_data_points%folds # The leftover data points which will be excluded.
+        X = X[:n_data_points-rest] # Remove the rest to get equally sized folds.
+        y = self.y[:n_data_points-rest] # Remove the rest to get equally sized folds.
 
         if shuffle:
             # Shuffle data for every new k fold.
@@ -470,10 +457,18 @@ class Regression:
             np.random.shuffle(X)
             np.random.set_state(state)
             np.random.shuffle(y)
+            np.random.set_state(state)
+            np.random.shuffle(self.X_test)
+            np.random.set_state(state)
+            np.random.shuffle(self.y_test)
 
-        mse = 0
-        mse_training = 0
+        self.mse_cv = 0
+        self.mse_train_cv = 0
+        self.mse_test_cv = 0
+        
         self.r_score_cv = 0
+        self.r_score_train_cv = 0
+        self.r_score_test_cv = 0
         
         for i in range(folds):
             """
@@ -481,42 +476,50 @@ class Regression:
             """
             y_split = np.split(y, folds)
             y_validation = y_split.pop(i)
-            y_training = np.concatenate(y_split)
+            y_train = np.concatenate(y_split)
 
             X_split = np.split(X, folds)
             X_validation = X_split.pop(i)
-            X_training = np.concatenate(X_split)
+            X_train = np.concatenate(X_split)
 
-            X_mean = np.mean(X_training)
-            X_std = np.std(X_training)
-            X_training = (X_training - X_mean)/X_std
+            X_mean = np.mean(X_train)
+            X_std = np.std(X_train)
+            X_train = (X_train - X_mean)/X_std
             X_validation = (X_validation - X_mean)/X_std
 
             if alpha == 0:
                 """
                 OLS or ridge regression.
                 """
-                beta = ols(X_training, y_training, lambd)
+                beta = ols(X_train, y_train, lambd)
             else:
                 """
                 Lasso regression.
                 """
                 clf = Lasso(alpha=alpha, fit_intercept=False,
                     normalize=True, max_iter=10000, tol=0.07)
-                clf.fit(X_training, y_training)
+                clf.fit(X_train, y_train)
                 beta = clf.coef_
             
-            y_predicted = X_validation@beta
-            y_model = X_training@beta
-            mse += mean_squared_error(y_predicted, y_validation)
-            mse_training += mean_squared_error(y_model, y_training)
+            y_validation_prediction = X_validation@beta
+            y_train_prediction = X_train@beta
+            y_test_prediction = self.X_test@beta
 
-            self.r_score_cv += 1 - np.sum((y_validation - y_predicted)**2)/\
-                np.sum((y_validation - np.mean(y_validation))**2)
+            self.mse_cv += mean_squared_error(y_validation_prediction, y_validation)
+            self.mse_train_cv += mean_squared_error(y_train_prediction, y_train)
+            self.mse_test_cv += mean_squared_error(y_test_prediction, self.y_test)
 
+            self.r_score_cv += r_squared(y_validation, y_validation_prediction)
+            self.r_score_train_cv += r_squared(y_train, y_train_prediction)
+            self.r_score_test_cv += r_squared(self.y_test, y_test_prediction)
+
+        self.mse_cv /= folds
+        self.mse_train_cv /= folds
+        self.mse_test_cv /= folds
+        
         self.r_score_cv /= folds
-
-        return mse/folds, mse_training/folds
+        self.r_score_train_cv /= folds
+        self.r_score_test_cv /= folds
 
 
     def standard_least_squares_regression(self, degree):
@@ -593,30 +596,17 @@ class Regression:
 
         Returns
         -------
-        mse_boot : float
-            The mean squared error of the test set.
-        
-        variance_boot : float
-            The variance.
-
-        bias_boot : float
-            The bias.
-
-        alpha : float
-            Lasso regression parameter.  Defaults to 0 which means no
-            Lasso regression.
+        Nothing.  Fetch the values as class attributes.
         """
         
         # Slicing the correct number of features.
-        n_features = features(degree)
+        n_features = features(degree, n_dependent_variables=2)
         X_train = self.X_train[:, :n_features]
         X_test = self.X_test[:, :n_features]
 
         # Keep all the predictions for later calculations.
-        n_test_data_points = self.X_test.shape[0]
-        Y_predicted = np.empty((n_test_data_points, n_bootstraps))
-        
-        self.r_score_boot = 0
+        Y_test_prediction = np.empty((self.X_test.shape[0], n_bootstraps))
+        Y_train_prediction = np.empty((self.X_train.shape[0], n_bootstraps))
 
         for b in range(n_bootstraps):
             """
@@ -637,18 +627,19 @@ class Regression:
                 clf.fit(X_resample, y_resample)
                 beta = clf.coef_
 
+            Y_test_prediction[:, b] = X_test@beta
+            Y_train_prediction[:, b] = X_train@beta
 
-            Y_predicted[:, b] = X_test@beta
+        y_test_prediction = np.mean(Y_test_prediction, axis=1)  # Average the predictions.
+        y_train_prediction = np.mean(Y_train_prediction, axis=1)  # Average the predictions.
 
-            self.r_score_boot += 1 - np.sum((self.y_test - Y_predicted[:, b])**2)/\
-                np.sum((self.y_test - np.mean(self.y_test))**2)
-
-        self.r_score_boot /= n_bootstraps
-        mse_boot = mean_squared_error(self.y_test.reshape(-1, 1), Y_predicted)
-        variance_boot = np.mean(np.var(Y_predicted, axis=1))
-        bias_boot = np.mean((self.y_test - np.mean(Y_predicted, axis=1))**2)
+        self.r_score_test_boot = r_squared(self.y_test, y_test_prediction)
+        self.mse_test_boot = mean_squared_error(self.y_test, y_test_prediction)
+        self.r_score_train_boot = r_squared(self.y_train, y_train_prediction)
+        self.mse_train_boot = mean_squared_error(self.y_train, y_train_prediction)
         
-        return mse_boot, variance_boot, bias_boot
+        self.variance_boot = np.mean(np.var(Y_test_prediction, axis=1))
+        self.bias_boot = np.mean((self.y_test - y_test_prediction)**2)        
 
 
     def _split_scale(self):
@@ -657,12 +648,11 @@ class Regression:
         subtracting the mean and dividing by the standard deviation,
         both values from the training set.  Shuffle the values.
         """
-        # Splitting.
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
 
-        # Scaling.
-        X_mean = np.mean(self.X_train)
-        X_std = np.std(self.X_train)
-        self.X_train = (self.X_train - X_mean)/X_std
-        self.X_test = (self.X_test - X_mean)/X_std
+        if self.scale:
+            X_mean = np.mean(self.X_train)
+            X_std = np.std(self.X_train)
+            self.X_train = (self.X_train - X_mean)/X_std
+            self.X_test = (self.X_test - X_mean)/X_std
