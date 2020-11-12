@@ -127,14 +127,28 @@ def regression_leaky_relu():
     r_train /= n_repetitions
     r_test /= n_repetitions
 
-    ax = sns.heatmap(mse_train, linewidth=0.5, annot=True, cmap='viridis')
-    ax.set_xticklabels(regularization_parameters)
-    ax.set_yticklabels(learning_rates)
+    fig, ax = plt.subplots(figsize=(9, 7))
+    ax = sns.heatmap(
+        data = mse_train,
+        linewidth = 0.5,
+        annot = True,
+        cmap = 'viridis',
+        ax = ax,
+        xticklabels = regularization_parameters,
+        yticklabels = learning_rates,
+        annot_kws = {"size": 14})
+    
     ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     ax.tick_params(axis='y', rotation=0)
-    ax.set_ylabel(r"$\eta$")
-    ax.set_xlabel(r"$\lambda$")
+    ax.tick_params(axis='x', rotation=0)
+    ax.tick_params(labelsize=15)
+    ax.set_ylabel(r"$\eta$", fontsize=15, rotation=90)
+    ax.set_xlabel(r"$\lambda$", fontsize=15, rotation=0)
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=15)
+    cbar.ax.set_ylabel('MSE', fontsize=15, rotation=90)
+    plt.savefig(fname="../fig/task_c_leaky_relu_lambda_eta.png", dpi=300)
     plt.show()
 
     # plt.title("leaky relu")
