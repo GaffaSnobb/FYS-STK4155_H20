@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
@@ -263,19 +264,103 @@ def regression_compare_neural_network_and_ols_ridge():
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
     x2 = np.random.uniform(0, 1, n_data_total)
+    noise = np.random.normal(size=n_data_total)*0.1
+    y = common.franke_function(x1, x2) + noise
+
+    # Data for linear regression:
+    n_repetitions = 50
+    polynomial_degree = 5
+    ridge_parameter = 1e-3
+    design_matrix = common.create_design_matrix_two_dependent_variables(
+        x1, x2, n_data_total, polynomial_degree)
+
+    linear_regression = common.Regression(
+        design_matrix = design_matrix,
+        true_output = y,
+        polynomial_degree = polynomial_degree,
+        scale = True)
+
+    mse_train_cv = 0
+    mse_test_cv = 0
+    r_score_train_cv = 0
+    r_score_test_cv = 0
+
+    mse_train_boot = 0
+    mse_test_boot = 0
+    r_score_train_boot = 0
+    r_score_test_boot = 0
+
+    mse_train_boot_ridge = 0
+    mse_test_boot_ridge = 0
+    r_score_train_boot_ridge = 0
+    r_score_test_boot_ridge = 0
+    
+    for _ in range(n_repetitions):
+        linear_regression.cross_validation(
+            degree = polynomial_degree,
+            folds = 5,
+            lambd = 0,  # Ridge.
+            alpha = 0,  # Lasso.
+            shuffle = False)
+
+        mse_train_cv += linear_regression.mse_train_cv
+        mse_test_cv += linear_regression.mse_test_cv
+        r_score_train_cv += linear_regression.r_score_train_cv
+        r_score_test_cv += linear_regression.r_score_test_cv
+
+    for _ in range(n_repetitions):
+        linear_regression.bootstrap(
+            degree = polynomial_degree,
+            n_bootstraps = 50,
+            lambd = 0,  # Ridge.
+            alpha = 0)  # Lasso.
+        
+        mse_train_boot += linear_regression.mse_train_boot
+        mse_test_boot += linear_regression.mse_test_boot
+        r_score_train_boot += linear_regression.r_score_train_boot
+        r_score_test_boot += linear_regression.r_score_test_boot
+
+    linear_regression_time = time.time()
+    for rep in range(n_repetitions):
+        linear_regression.bootstrap(
+            degree = polynomial_degree,
+            n_bootstraps = 50,
+            lambd = ridge_parameter,  # Ridge.
+            alpha = 0)  # Lasso.
+
+        mse_train_boot_ridge += linear_regression.mse_train_boot
+        mse_test_boot_ridge += linear_regression.mse_test_boot
+        r_score_train_boot_ridge += linear_regression.r_score_train_boot
+        r_score_test_boot_ridge += linear_regression.r_score_test_boot
+        if rep == 0:
+            linear_regression_time = time.time() - linear_regression_time
+
+    mse_train_cv /= n_repetitions
+    mse_test_cv /= n_repetitions
+    r_score_train_cv /= n_repetitions
+    r_score_test_cv /= n_repetitions
+
+    mse_train_boot /= n_repetitions
+    mse_test_boot /= n_repetitions
+    r_score_train_boot /= n_repetitions
+    r_score_test_boot /= n_repetitions
+
+    mse_train_boot_ridge /= n_repetitions
+    mse_test_boot_ridge /= n_repetitions
+    r_score_train_boot_ridge /= n_repetitions
+    r_score_test_boot_ridge /= n_repetitions
+
+    # Data for the neural network:
     X = np.zeros(shape=(n_data_total, 2))
     for i in range(n_data_total): X[i] = x1[i], x2[i]
-    y = common.franke_function(x1, x2)
-    noise = np.random.normal(size=n_data_total)*0.1
-    y += noise
 
     q1 = nn.FFNNRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(50, 25, 25),
         n_categories = 1,
-        n_epochs = 300,
-        batch_size = 40,
+        n_epochs = 1000,
+        batch_size = 50,
         hidden_layer_activation_function = af.sigmoid,
         hidden_layer_activation_function_derivative = af.sigmoid_derivative,
         output_activation_function = af.linear,
@@ -284,44 +369,76 @@ def regression_compare_neural_network_and_ols_ridge():
         debug = False,
         scaling = True)
 
-    N = 10
-    n_repetitions = 1   # Average to smooth the data.
-    learning_rates = np.linspace(1e-3, 2e-1, N)
-    mse_train = np.zeros(N)
-    mse_test = np.zeros(N)
-    r_train = np.zeros(N)
-    r_test = np.zeros(N)
+    n_repetitions = 10   # Average to smooth the data.
 
+    mse_train_nn = 0
+    mse_test_nn = 0
+    r_train_nn = 0
+    r_test_nn = 0
+
+    neural_network_time = time.time()
     for rep in range(n_repetitions):
         print(f"\nrepetition {rep+1} of {n_repetitions}")
         
-        for i in range(N):
-            print(f"{i+1} of {N}, {learning_rates[i]=}")
-            q1.train_neural_network(learning_rate=learning_rates[i])
-            q1.score()
-            mse_train[i] += q1.mse_train
-            mse_test[i] += q1.mse_test
-            r_train[i] += q1.r_train
-            r_test[i] += q1.r_test
+        q1.train_neural_network(learning_rate=a_good_learning_rate)
+        q1.score()
+        mse_train_nn += q1.mse_train
+        mse_test_nn += q1.mse_test
+        r_train_nn += q1.r_train
+        r_test_nn += q1.r_test
 
-    mse_train /= n_repetitions
-    mse_test /= n_repetitions
-    r_train /= n_repetitions
-    r_test /= n_repetitions
+        if rep == 0:
+            neural_network_time = time.time() - neural_network_time
 
-    plt.plot(learning_rates, mse_train, label="train")
-    plt.plot(learning_rates, mse_test, label="test")
-    plt.xlabel("learning rates")
-    plt.ylabel("mse")
-    plt.legend()
-    plt.show()
+    mse_train_nn /= n_repetitions
+    mse_test_nn /= n_repetitions
+    r_train_nn /= n_repetitions
+    r_test_nn /= n_repetitions
 
-    plt.plot(learning_rates, r_train, label="train")
-    plt.plot(learning_rates, r_test, label="test")
-    plt.xlabel("learning rates")
-    plt.ylabel("r_score")
-    plt.legend()
-    plt.show()
+    print("=======================================================================================================")
+    print("Linear regression with cross validation (ols):")
+    print("-----------------------------------------------------------")
+    print(f"MSE train: {mse_train_cv}")
+    print(f"MSE test: {mse_test_cv}")
+    print(f"R train: {r_score_train_cv}")
+    print(f"R test: {r_score_test_cv}")
+    print("=======================================================================================================")
+
+    print("Linear regression with bootstrapping (ols):")
+    print("-----------------------------------------------------------")
+    print(f"MSE train: {mse_train_boot}")
+    print(f"MSE test: {mse_test_boot}")
+    print(f"R train: {r_score_train_boot}")
+    print(f"R test: {r_score_test_boot}")
+    print("=======================================================================================================")
+
+    print(f"Linear regression with bootstrapping ({ridge_parameter=}):")
+    print(f"{linear_regression_time=:.4f} s")
+    print("-----------------------------------------------------------")
+    print(f"MSE train: {mse_train_boot_ridge}")
+    print(f"MSE test: {mse_test_boot_ridge}")
+    print(f"R train: {r_score_train_boot_ridge}")
+    print(f"R test: {r_score_test_boot_ridge}")
+    print("=======================================================================================================")
+
+    print("Neural network regression:")
+    print(f"{q1.hidden_layer_sizes=}")
+    print(f"{q1.n_epochs=} {q1.batch_size=}")
+    print(f"{neural_network_time=:.4f} s")
+    print("-----------------------------------------------------------")
+    print(f"MSE train: {mse_train_nn}")
+    print(f"MSE test: {mse_test_nn}")
+    print(f"R train: {r_train_nn}")
+    print(f"R test: {r_test_nn}")
+    print("=======================================================================================================")
+
+    print("Comparison (nn=neural network, lrb=linear regression bootstrapping):")
+    print("-----------------------------------------------------------")
+    print(f"MSE train nn/lrb: {mse_train_nn/mse_train_boot} <--- lrb is this times better than nn")
+    print(f"MSE test nn/lrb: {mse_test_nn/mse_test_boot} <--- lrb is this times better than nn")
+    print(f"R train nn/lrb: {(1 - r_train_nn)/(1 - r_score_train_boot)} <--- lrb is this times closer to 1 than nn")
+    print(f"R test nn/lrb: {(1 - r_test_nn)/(1 - r_score_test_boot)} <--- lrb is this times closer to 1 than nn")
+    print("=======================================================================================================")
 
 
 if __name__ == "__main__":
