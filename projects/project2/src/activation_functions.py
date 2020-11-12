@@ -24,8 +24,6 @@ def sigmoid_derivative(x):
     x : numpy.ndarray
         Input parameter.
     """
-    # exponential_term = np.exp(-x)
-    # return exponential_term/(1 + exponential_term)**2
     val = sigmoid(x)
     return val*(1 - val)
 
@@ -75,6 +73,6 @@ def leaky_relu_derivative(x):
     return y
 
 
-
+@numba.njit
 def mse_derivative(y_predicted, y_actual):
     return 2/y_actual.shape[0]*(y_predicted - y_actual)
