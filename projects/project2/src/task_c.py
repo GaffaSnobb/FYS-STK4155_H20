@@ -88,8 +88,8 @@ def regression_leaky_relu():
         true_output = y,
         hidden_layer_sizes=(50, 25, 25),
         n_categories = 1,
-        n_epochs = 20,
-        batch_size = 40,
+        n_epochs = 10,
+        batch_size = 50,
         hidden_layer_activation_function = af.leaky_relu,
         hidden_layer_activation_function_derivative = af.leaky_relu_derivative,
         output_activation_function = af.linear,
@@ -130,24 +130,24 @@ def regression_leaky_relu():
     fig, ax = plt.subplots(figsize=(9, 7))
     ax = sns.heatmap(
         data = mse_train,
+        xticklabels = [f"{x*1e4:.1f}" for x in regularization_parameters],
+        yticklabels = [f"{x*1e5:.1f}" for x in learning_rates],
         linewidth = 0.5,
         annot = True,
         cmap = 'viridis',
         ax = ax,
-        xticklabels = regularization_parameters,
-        yticklabels = learning_rates,
         annot_kws = {"size": 14})
     
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-    ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     ax.tick_params(axis='y', rotation=0)
     ax.tick_params(axis='x', rotation=0)
     ax.tick_params(labelsize=15)
-    ax.set_ylabel(r"$\eta$", fontsize=15, rotation=90)
-    ax.set_xlabel(r"$\lambda$", fontsize=15, rotation=0)
+    ax.set_ylabel(r"$\eta [10^{-5}]$", fontsize=15, rotation=90)
+    ax.set_xlabel(r"$\lambda [10^{-4}]$", fontsize=15, rotation=0)
     cbar = ax.collections[0].colorbar
     cbar.ax.tick_params(labelsize=15)
     cbar.ax.set_ylabel('MSE', fontsize=15, rotation=90)
+
+
     plt.savefig(fname="../fig/task_c_leaky_relu_lambda_eta.png", dpi=300)
     plt.show()
 
