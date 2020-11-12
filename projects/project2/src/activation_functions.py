@@ -75,6 +75,6 @@ def leaky_relu_derivative(x):
     return y
 
 
-@numba.njit
+
 def mse_derivative(y_predicted, y_actual):
     return 2/y_actual.shape[0]*(y_predicted - y_actual)
