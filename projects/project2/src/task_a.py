@@ -8,15 +8,12 @@ class Example1D(common._StatTools):
     def __init__(self, n_data_total, poly_degree, init_beta=None):
         """
         Set up a 1D example for easy visualization of the process.
-
         Parameters
         ----------
         n_data_total : int
             The total number of data points.
-
         poly_degree : int
             The polynomial degree.
-
         init_beta : NoneType, numpy.ndarray
             Initial beta values.  Defaults to None where 0 is used.
         """
@@ -34,12 +31,10 @@ class Example2D(common._StatTools):
     def __init__(self, n_data_total, poly_degree, init_beta=None):
         """
         Set up a 2D example using Franke data.
-
         Parameters
         ----------
         n_data_total : int
             The number of data points.
-
         poly_degree : int
             The polynomial degree.
         """
@@ -110,9 +105,9 @@ def visualise(beta, x, y, poly_degree, sgd_mse):
     plt.show()
 
 def mse_vs_epochs_batches_steps_lambdas():
-    n_data_total = 200
+    n_data_total = 400
     n_epochs = 25
-    n_repetitions = 2
+    n_repetitions = 15
     n_step_sizes = 10
     poly_degree = 3
     n_lambdas = 10
@@ -229,21 +224,18 @@ def mse_vs_epochs_batches_steps_lambdas():
 
 def mse_vs_batches_no_ridge():
     n_data_total = 200
-    n_epochs = 10
-    n_repetitions = 2
+    n_epochs = 20
+    n_repetitions = 10
     poly_degree = 3
-    n_lambdas = 5
-    lambdas = np.linspace(0,2,n_lambdas)
     
+    # q = Example1D(n_data_total, poly_degree)
     q = Example2D(n_data_total, poly_degree)
-    Q = Example2D(n_data_total, poly_degree)
+
     batches = np.arange(1, n_data_total, 1)
     n_batches_total = len(batches)
 
     sgd_mse_train = np.zeros(n_batches_total)
     sgd_mse_test = np.zeros(n_batches_total)
-    sgd_mse_train_r = np.zeros((n_batches_total, n_lambdas))
-    sgd_mse_test_r = np.zeros((n_batches_total, n_lambdas))
     
     for rep in range(n_repetitions):
         """
@@ -258,31 +250,17 @@ def mse_vs_batches_no_ridge():
             sgd_mse_train_tmp, sgd_mse_test_tmp = q.mse
             sgd_mse_train[i] += sgd_mse_train_tmp
             sgd_mse_test[i] += sgd_mse_test_tmp
-            for j in range(n_lambdas):
-                Q.stochastic_gradient_descent(n_epochs, n_batches=n_batches_total,
-                    lambd=lambdas[j])
-                sgd_mse_train_tmp_r, sgd_mse_test_tmp_r = Q.mse
-                sgd_mse_train_r[i, j] += sgd_mse_train_tmp_r
-                sgd_mse_test_r[i, j] += sgd_mse_test_tmp_r
 
             if i == 0: beta = q.beta
 
-
     sgd_mse_train /= n_repetitions  # Average.
     sgd_mse_test /= n_repetitions
-    sgd_mse_train_r /= n_repetitions
-    sgd_mse_test_r /= n_repetitions
-    idx = np.unravel_index(np.argmin(sgd_mse_test_r), sgd_mse_test_r.shape)
 
-    #plt.semilogy(batches, sgd_mse_train, label="train", color="grey")
-    plt.semilogy(batches, sgd_mse_test, label="OLS", color="grey")
-    plt.semilogy(batches, sgd_mse_test_r[:,idx[1]], label="Ridge", color="black")
-    plt.xlabel("Number of mini-batches", fontsize=15)
-    plt.ylabel("MSE", fontsize=15)
-    plt.title("Stochastic gradient descent", fontsize=15)
-    plt.tick_params(labelsize=12)
+    plt.semilogy(batches, sgd_mse_train, label="train")
+    plt.semilogy(batches, sgd_mse_test, label="test")
+    plt.xlabel("batches")
+    plt.ylabel("MSE")
     plt.legend()
-    #plt.savefig(dpi=300, fname="task_a_compare_mse_sgd_OLS_ridge")
     plt.show()
 
     # visualise(beta, q.X_train[:, 1], q.y_train, poly_degree, sgd_mse_train[-1])
@@ -428,10 +406,10 @@ def mse_vs_lambda_vs_step_size_ridge():
 
 
 if __name__ == "__main__":
-    mse_vs_epochs_batches_steps_lambdas()
     # mse_vs_batches_no_ridge()
     # mse_vs_step_size_no_ridge()
     # mse_vs_step_size_vs_batches_no_ridge()
     # mse_vs_lambda_vs_step_size_ridge()
-    #visualize_fit_1d()
+    mse_vs_epochs_batches_steps_lambdas()
+    # visualize_fit_1d()
     pass
