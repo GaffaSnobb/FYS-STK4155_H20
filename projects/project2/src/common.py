@@ -7,6 +7,7 @@ from sklearn.linear_model import Lasso
 
 a_good_learning_rate = 0.09316326530612246
 
+
 def polynomial_1d(x, *beta):
     """
     n'th degree polynomial for fit testing.
