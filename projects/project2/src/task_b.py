@@ -12,6 +12,10 @@ a_good_learning_rate = 0.09316326530612246
 
 
 def classification():
+    """
+    Only used for testing the neural network, not directly related to
+    task_b.
+    """
     np.random.seed(1337)
     digits = datasets.load_digits()
     X = digits.images
@@ -48,6 +52,9 @@ def classification():
 
 
 def regression_vary_learning_rate():
+    """
+    Results from this function are not directly used in task b.
+    """
     # np.random.seed(1337)
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
@@ -120,6 +127,9 @@ def regression_vary_learning_rate():
 
 
 def regression_vary_regularization_parameters():
+    """
+    Results from this function are not directly used in task b.
+    """
     # np.random.seed(1337)
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
@@ -260,6 +270,14 @@ def regression_vary_learning_rate_and_regularization_parameter():
 
 
 def regression_compare_neural_network_and_ols_ridge():
+    """
+    Actual results for task b.  Generate a Franke data set and solve it
+    with the linear regression code from project 1.  Also solve it with
+    the neural network.  Print detailed comparison data.
+
+    (Disregard the cross validation data.  Something is off with the
+    r score, so we'll just use bootstrapping instead.)
+    """
     # np.random.seed(1337)
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
@@ -268,7 +286,7 @@ def regression_compare_neural_network_and_ols_ridge():
     y = common.franke_function(x1, x2) + noise
 
     # Data for linear regression:
-    n_repetitions = 50
+    n_repetitions = 50  # Repeat and average the linear regression calculation.
     polynomial_degree = 5
     ridge_parameter = 1e-3
     design_matrix = common.create_design_matrix_two_dependent_variables(
@@ -296,6 +314,9 @@ def regression_compare_neural_network_and_ols_ridge():
     r_score_test_boot_ridge = 0
     
     for _ in range(n_repetitions):
+        """
+        Repeat and average the data.  Cross validation ols.
+        """
         linear_regression.cross_validation(
             degree = polynomial_degree,
             folds = 5,
@@ -309,6 +330,9 @@ def regression_compare_neural_network_and_ols_ridge():
         r_score_test_cv += linear_regression.r_score_test_cv
 
     for _ in range(n_repetitions):
+        """
+        Repeat and average the data.  Bootstrapping ols.
+        """
         linear_regression.bootstrap(
             degree = polynomial_degree,
             n_bootstraps = 50,
@@ -322,6 +346,9 @@ def regression_compare_neural_network_and_ols_ridge():
 
     linear_regression_time = time.time()
     for rep in range(n_repetitions):
+        """
+        Repeat and average the data.  Bootstrapping ridge.
+        """
         linear_regression.bootstrap(
             degree = polynomial_degree,
             n_bootstraps = 50,
@@ -333,6 +360,9 @@ def regression_compare_neural_network_and_ols_ridge():
         r_score_train_boot_ridge += linear_regression.r_score_train_boot
         r_score_test_boot_ridge += linear_regression.r_score_test_boot
         if rep == 0:
+            """
+            Time the first run.
+            """
             linear_regression_time = time.time() - linear_regression_time
 
     mse_train_cv /= n_repetitions
@@ -378,8 +408,10 @@ def regression_compare_neural_network_and_ols_ridge():
 
     neural_network_time = time.time()
     for rep in range(n_repetitions):
+        """
+        Repeat and average the data.  Neural network regression.
+        """
         print(f"\nrepetition {rep+1} of {n_repetitions}")
-        
         q1.train_neural_network(learning_rate=a_good_learning_rate)
         q1.score()
         mse_train_nn += q1.mse_train
@@ -388,6 +420,9 @@ def regression_compare_neural_network_and_ols_ridge():
         r_test_nn += q1.r_test
 
         if rep == 0:
+            """
+            Time the first run.
+            """
             neural_network_time = time.time() - neural_network_time
 
     mse_train_nn /= n_repetitions
@@ -396,7 +431,7 @@ def regression_compare_neural_network_and_ols_ridge():
     r_test_nn /= n_repetitions
 
     print("=======================================================================================================")
-    print("Linear regression with cross validation (ols):")
+    print("Linear regression with cross validation (ols) DONT USE THESE VALUES, SOMETHING WRONG WITH R SCORE:")
     print("-----------------------------------------------------------")
     print(f"MSE train: {mse_train_cv}")
     print(f"MSE test: {mse_test_cv}")
