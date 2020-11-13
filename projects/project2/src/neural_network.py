@@ -208,6 +208,10 @@ class _FFNN:
             self.y_train = self.y_train.reshape(-1, 1)
             self.y_test = self.y_test.reshape(-1, 1)    # I spent ONE WEEK debugging, only to find that this single line of code solved literally everything.
 
+        # For feedforward.
+        self.neuron_activation = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray)  # a
+        self.neuron_input = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray) # z
+
         self.hidden_weights = np.zeros(shape=self.n_hidden_layers, dtype=np.ndarray)
         self.hidden_biases = np.zeros(shape=self.n_hidden_layers, dtype=np.ndarray)
 
@@ -248,9 +252,6 @@ class _FFNN:
         """
         Perform one feedforward.
         """
-        self.neuron_activation = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray)  # a
-        self.neuron_input = np.zeros(shape=self.n_hidden_layers + 2, dtype=np.ndarray) # z
-
         self.neuron_activation[0] = self.X_selection
         self.neuron_input[0] = np.array([0])
 
@@ -451,27 +452,12 @@ class FFNNLogisticRegressor(FFNNClassifier):
         self.y_train = to_categorical(self.y_train)
 
         # For feedforward.
-        self.output_weights = np.random.normal(size=(self.n_features, self.n_categories))
         self.neuron_activation = np.zeros(shape=2, dtype=np.ndarray)  # a
         self.neuron_input = np.zeros(shape=2, dtype=np.ndarray) # z
 
-        # Dummy arrays, not in use.  Needed to inherit feedforward.
-        # self.hidden_weights = np.array([0])
-        # self.hidden_biases = np.array([0])
-
         # Weights and biases for the output layer.
-        # self.output_biases = np.full(shape=self.n_categories, fill_value=0.01, dtype=np.float64)
-
-
-    def feedforward(self):
-        # self.output_weights = np.random.normal(size=(self.n_features, self.n_categories))
-        # self.neuron_activation = np.zeros(shape=2, dtype=np.ndarray)  # a
-        # self.neuron_input = np.zeros(shape=2, dtype=np.ndarray) # z
-
-        self.neuron_activation[0] = self.X_selection
-        self.neuron_input[0] = np.array([0])
-        self.neuron_input[-1] = self.X_selection@self.output_weights
-        self.neuron_activation[-1] = af.softmax(self.neuron_input[-1])        
+        self.output_weights = np.random.normal(size=(self.n_features, self.n_categories))
+        self.output_biases = np.full(shape=self.n_categories, fill_value=0.01, dtype=np.float64)
 
 
     def _backpropagation(self):
@@ -479,16 +465,9 @@ class FFNNLogisticRegressor(FFNNClassifier):
         Perform one backpropagation using gradient descent.
         """
         self.error = self.cost_function_derivative(self.neuron_activation[-1], self.y_selection)
-        # self.error = self.y_selection - self.neuron_activation[-1]
-
-        # self.bias_gradient = np.sum(self.error, axis=0)
-        # self.weight_gradient = (self.error.T@self.neuron_activation[-2]).T
+        self.bias_gradient = np.sum(self.error, axis=0)
         self.weight_gradient = self.neuron_activation[-2].T@self.error
+        
         self.output_weights -= self.learning_rate*self.weight_gradient +\
             self.lambd*self.output_weights
-        # self.output_biases -= self.learning_rate*(self.bias_gradient)
-
-
-    def score(self, X, y):
-        prediction = np.argmax(af.softmax(X@self.output_weights), axis=1)
-        return accuracy_score(prediction, y)
+        self.output_biases -= self.learning_rate*(self.bias_gradient)
