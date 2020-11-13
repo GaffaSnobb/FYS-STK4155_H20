@@ -130,7 +130,6 @@ def mse_vs_epochs_batches_steps_lambdas():
     sklearn_Q_mse_train = np.zeros((n_epochs, n_batches_total, n_step_sizes, n_lambdas))
     sklearn_Q_mse_test = np.zeros((n_epochs, n_batches_total, n_step_sizes,n_lambdas))
 
-
     for rep in range(n_repetitions):
         """
         Repeat the experiment to get better data.
@@ -186,7 +185,7 @@ def mse_vs_epochs_batches_steps_lambdas():
     plt.title("Stochastic gradient descent", fontsize=15)
     plt.tick_params(labelsize=12)
     plt.legend()
-    #plt.savefig(dpi=300, fname="task_a_epochs_mse_OLS_ridge")
+    plt.savefig(dpi=300, fname="task_a_epochs_mse_OLS_ridge")
     plt.show()
 
     plt.semilogy(batches, sgd_mse_test[idx[0],:,idx[2]], label="OLS", color="grey")
@@ -196,7 +195,7 @@ def mse_vs_epochs_batches_steps_lambdas():
     plt.title("Stochastic gradient descent", fontsize=15)
     plt.tick_params(labelsize=12)
     plt.legend()
-    #plt.savefig(dpi=300, fname="task_a_batches_mse_sgd_OLS_ridge")
+    plt.savefig(dpi=300, fname="task_a_batches_mse_sgd_OLS_ridge")
     plt.show()
 
     plt.semilogy(step_sizes, sgd_mse_test[idx[0],idx[1],:], label="OLS", color="grey")
@@ -208,7 +207,7 @@ def mse_vs_epochs_batches_steps_lambdas():
     plt.title("Stochastic gradient descent", fontsize=15)
     plt.tick_params(labelsize=12)
     plt.legend()
-    #plt.savefig(dpi=300, fname="task_a_stepsize_mse_sgd_OLS_ridge")
+    plt.savefig(dpi=300, fname="task_a_stepsize_mse_sgd_OLS_ridge")
     plt.show()
 
     plt.semilogy(lambdas, sgd_mse_test_r[idx_r[0],idx_r[1],idx_r[2],:], label="Ridge", color="black")
@@ -217,7 +216,7 @@ def mse_vs_epochs_batches_steps_lambdas():
     plt.ylabel("MSE", fontsize=15)
     plt.title("Stochastic gradient descent, ridge", fontsize=15)
     plt.tick_params(labelsize=12)
-    #plt.savefig(dpi=300, fname="task_a_lambda_mse_sgd_ridge")
+    plt.savefig(dpi=300, fname="task_a_lambda_mse_sgd_ridge")
     plt.show()
     print(f"min(MSE_OLS)={np.amin(sgd_mse_test)} at epoch={epochs[idx[0]]}, batch#={batches[idx[1]]}, learning rate={step_sizes[idx[2]]}")
     print(f"min(MSE_ridge)={np.amin(sgd_mse_test_r)} at epoch={epochs[idx_r[0]]},  batch#={batches[idx_r[1]]}, learning rate={step_sizes[idx_r[2]]}, lambda={lambdas[idx_r[3]]}")
