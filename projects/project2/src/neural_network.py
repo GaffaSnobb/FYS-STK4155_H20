@@ -262,7 +262,7 @@ class _FFNN:
             """
             self.neuron_input[i + 1] = self.neuron_activation[i]@self.hidden_weights[i] + self.hidden_biases[i]
             self.neuron_activation[i + 1] = self.hidden_layer_activation_function(self.neuron_input[i + 1])
-
+        
         self.neuron_input[-1] = (self.neuron_activation[-2]@self.output_weights + self.output_biases)
         self.neuron_activation[-1] = self.output_activation_function(self.neuron_input[-1])
 
@@ -289,8 +289,8 @@ class _FFNN:
             Loop backwards through the errors, bias and weight
             gradients.
             """
-            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*\
-                self.hidden_layer_activation_function_derivative(self.neuron_input[i].T)
+            self.error[i] = self.hidden_weights[i + 2]@self.error[i + 1]*self.hidden_layer_activation_function_derivative(self.neuron_input[i].T)
+            self.error[-2] = self.output_weights@self.error[-1].T*self.hidden_layer_activation_function_derivative(self.neuron_input[-2]).T
             self.bias_gradient[i] = np.sum(self.error[i], axis=1)
             self.weight_gradient[i] = self.error[i]@self.neuron_activation[i - 1]
 
@@ -405,7 +405,7 @@ class FFNNClassifier(_FFNN):
             sklearn.metrics.accuracy_score.  1 is best, 0 is worst.
         """
         self.predict(X)
-        score = accuracy_score(np.argmax(self.neuron_input[-1], axis=1), y)
+        score = accuracy_score(np.argmax(self.neuron_activation[-1], axis=1), y)
         return score
         
 
@@ -430,3 +430,65 @@ class FFNNRegressor(_FFNN):
         self.r_test = common.r_squared(self.y_test, y_test_prediction)
 
         return self.mse_train, self.mse_test, self.r_train, self.r_test
+
+
+class FFNNLogisticRegressor(FFNNClassifier):
+    def _initial_state(self):
+        """
+        Set the system to the correct state before training starts.
+        Split the data into training and testing sets.  Initialize
+        weights and biases.
+        """
+        self.X_train, self.X_test, self.y_train, self.y_test = \
+            train_test_split(self.X, self.y, test_size=0.2, shuffle=True) 
+            
+        if self.scaling:
+            X_mean = np.mean(self.X_train)
+            X_std = np.std(self.X_train)
+            self.X_train = (self.X_train - X_mean)/X_std
+            self.X_test = (self.X_test - X_mean)/X_std
+
+        self.y_train = to_categorical(self.y_train)
+
+        # For feedforward.
+        self.output_weights = np.random.normal(size=(self.n_features, self.n_categories))
+        self.neuron_activation = np.zeros(shape=2, dtype=np.ndarray)  # a
+        self.neuron_input = np.zeros(shape=2, dtype=np.ndarray) # z
+
+        # Dummy arrays, not in use.  Needed to inherit feedforward.
+        # self.hidden_weights = np.array([0])
+        # self.hidden_biases = np.array([0])
+
+        # Weights and biases for the output layer.
+        # self.output_biases = np.full(shape=self.n_categories, fill_value=0.01, dtype=np.float64)
+
+
+    def feedforward(self):
+        # self.output_weights = np.random.normal(size=(self.n_features, self.n_categories))
+        # self.neuron_activation = np.zeros(shape=2, dtype=np.ndarray)  # a
+        # self.neuron_input = np.zeros(shape=2, dtype=np.ndarray) # z
+
+        self.neuron_activation[0] = self.X_selection
+        self.neuron_input[0] = np.array([0])
+        self.neuron_input[-1] = self.X_selection@self.output_weights
+        self.neuron_activation[-1] = af.softmax(self.neuron_input[-1])        
+
+
+    def _backpropagation(self):
+        """
+        Perform one backpropagation using gradient descent.
+        """
+        self.error = self.cost_function_derivative(self.neuron_activation[-1], self.y_selection)
+        # self.error = self.y_selection - self.neuron_activation[-1]
+
+        # self.bias_gradient = np.sum(self.error, axis=0)
+        # self.weight_gradient = (self.error.T@self.neuron_activation[-2]).T
+        self.weight_gradient = self.neuron_activation[-2].T@self.error
+        self.output_weights -= self.learning_rate*self.weight_gradient +\
+            self.lambd*self.output_weights
+        # self.output_biases -= self.learning_rate*(self.bias_gradient)
+
+
+    def score(self, X, y):
+        prediction = np.argmax(af.softmax(X@self.output_weights), axis=1)
+        return accuracy_score(prediction, y)
