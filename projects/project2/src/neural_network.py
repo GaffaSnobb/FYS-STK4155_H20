@@ -189,10 +189,14 @@ class _FFNN:
             self.X_train = (self.X_train - self.X_mean)/self.X_std
             self.X_test = (self.X_test - self.X_mean)/self.X_std
 
-            self.y_mean = np.mean(self.y_train)
-            self.y_std = np.std(self.y_train)
-            self.y_train = (self.y_train - self.y_mean)/self.y_std
-            self.y_test = (self.y_test - self.y_mean)/self.y_std
+            if subclass == "regressor":
+                """
+                Classifier should not scale the y data.
+                """
+                self.y_mean = np.mean(self.y_train)
+                self.y_std = np.std(self.y_train)
+                self.y_train = (self.y_train - self.y_mean)/self.y_std
+                self.y_test = (self.y_test - self.y_mean)/self.y_std
         
         if subclass == "classifier":
             """
@@ -237,15 +241,6 @@ class _FFNN:
         self.output_weights = np.random.normal(
             size=(self.hidden_layer_sizes[-1], self.n_categories))
         self.output_biases = np.full(shape=self.n_categories, fill_value=0.01)
-
-
-    def start_timing(self):
-        self.stopwatch = time.time()
-
-
-    def stop_timing(self):
-        self.stopwatch = time.time() - self.stopwatch
-        print(f"{sys._getframe().f_back.f_code.co_name} time: {self.stopwatch:.4f} s")
 
 
     def feedforward(self):
@@ -317,7 +312,8 @@ class _FFNN:
     def train_neural_network(self, learning_rate=0.1, lambd=0):
         """
         Train the neural network.  Send the training data to
-        _backpropagation in minibatches.
+        _backpropagation in minibatches.  _backpropagation implements
+        gradient descent, so this combination is batch gradient descent.
 
         Parameters
         ----------
@@ -328,7 +324,7 @@ class _FFNN:
             Regularization parameter, aka lambda.
         """
         self._initial_state()
-        if self.verbose: self.start_timing()
+        self.start_timing()
         self.learning_rate = learning_rate
         self.lambd = lambd
 
@@ -359,7 +355,7 @@ class _FFNN:
                 if self.debug: break
             if self.debug: break
 
-        if self.verbose: self.stop_timing()
+        self.stop_timing()
 
 
     def predict(self, X):
@@ -380,6 +376,16 @@ class _FFNN:
         self.X_selection = X
         self.feedforward()
         return self.neuron_activation[-1]
+
+
+    def start_timing(self):
+        self.stopwatch = time.time()
+
+
+    def stop_timing(self):
+        self.stopwatch = time.time() - self.stopwatch
+        if self.verbose:
+            print(f"{sys._getframe().f_back.f_code.co_name} time: {self.stopwatch:.4f} s")
 
 
 class FFNNClassifier(_FFNN):
@@ -434,12 +440,20 @@ class FFNNRegressor(_FFNN):
 
 
 class FFNNLogisticRegressor(FFNNClassifier):
+    """
+    This logistic regression implementation is simply a neural network
+    with no hidden layers.
+    """
     def _initial_state(self):
         """
         Set the system to the correct state before training starts.
         Split the data into training and testing sets.  Initialize
         weights and biases.
         """
+        if self.n_hidden_layers != 0:
+            print(f"{type(self).__name__} only works with hidden layer size 0.")
+            sys.exit()
+
         self.X_train, self.X_test, self.y_train, self.y_test = \
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True) 
             
@@ -464,7 +478,8 @@ class FFNNLogisticRegressor(FFNNClassifier):
         """
         Perform one backpropagation using gradient descent.
         """
-        self.error = self.cost_function_derivative(self.neuron_activation[-1], self.y_selection)
+        self.error = self.cost_function_derivative(self.neuron_activation[-1],
+            self.y_selection)
         self.bias_gradient = np.sum(self.error, axis=0)
         self.weight_gradient = self.neuron_activation[-2].T@self.error
         
