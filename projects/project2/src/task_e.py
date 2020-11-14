@@ -147,6 +147,10 @@ def compare_logistic_regression_and_neural_network_classification_batch_sizes():
 
 
 class CompareNNAndLogistic:
+    """
+    Generate comparison data of the neural network and logistic
+    regression.
+    """
     def __init__(self):
         digits = datasets.load_digits()
         self.X = digits.images
@@ -159,8 +163,7 @@ class CompareNNAndLogistic:
         self.n_n_epochs = len(self.n_epochs)
         self.batch_size = 20
         self.learning_rate = 4.8e-3
-        self.hidden_layer_sizes = (50,25)  # Only for NN.
-        # self.name = f"_{self.n_repetitions=}_{n_n_epochs=}_epoch_range=[{epoch_range[0]}_{epoch_range[1]}]_{learning_rate=}_{batch_size=}_{hidden_layer_sizes=}.npy"
+        self.hidden_layer_sizes = (50,25,25)  # Only for NN.
         self.name = f"_n_repetitions={self.n_repetitions}"
         self.name += f"_n_n_epochs={self.n_n_epochs}"
         self.name += f"_epoch_range=[{epoch_range[0]}_{epoch_range[1]}]"
@@ -169,7 +172,22 @@ class CompareNNAndLogistic:
         self.name += f"_hidden_layer_sizes={self.hidden_layer_sizes}.npy"
 
     def generate_data(self, which="both"):
+        """
+        Generate logistic regression and neural network data based on
+        the constructor input parameters.  Save the result as numpy
+        binary files.
+
+        Parameters
+        ----------
+        which : str
+            Choose whether to calculate both for NN and LR, or for just
+            one.  Allowed inputs are 'both', 'nn', and 'lr'.
+        """
         try:
+            """
+            Check whether the files already exist by trying to import
+            them.
+            """
             if (which == "both") or (which == "nn"):
                 nn_scores = np.load(file="data_files/task_e_nn_scores" + self.name)
             if (which == "both") or (which == "lr"):
@@ -180,6 +198,9 @@ class CompareNNAndLogistic:
             # lr_times = np.load(file="data_files/task_e_lr_times" + name)
         
         except FileNotFoundError:
+            """
+            Generate the data if the files are not found.
+            """
             nn_scores = np.zeros(self.n_n_epochs)  # Neural network.
             lr_scores = np.zeros(self.n_n_epochs)  # Logistic regression.
             nn_times = np.zeros(self.n_n_epochs)
@@ -188,6 +209,20 @@ class CompareNNAndLogistic:
             ray.init()  
             @ray.remote
             def nn_func():
+                """
+                This part of the code is put in a function for
+                parallelization with ray.
+
+                Returns
+                -------
+                nn_scores_tmp : numpy.ndarray
+                    The neural network scores for the range of number
+                    of epochs.
+
+                nn_times_tmp : numpy.ndarray
+                    The neural network times for the range of number
+                    of epochs.
+                """
                 nn_classifier = nn.FFNNClassifier(
                     input_data = self.X,
                     true_output = self.y,
@@ -207,6 +242,9 @@ class CompareNNAndLogistic:
                 nn_times_tmp = np.zeros(self.n_n_epochs)
 
                 for i in range(self.n_n_epochs):
+                    """
+                    Loop over the number of epochs.
+                    """
                     print(f"\nrepetition {rep+1} of {self.n_repetitions}")
                     print(f"{i+1} of {self.n_n_epochs}, {self.n_epochs[i]=}")
                     
@@ -219,6 +257,20 @@ class CompareNNAndLogistic:
             
             @ray.remote
             def lr_func():
+                """
+                This part of the code is put in a function for
+                parallelization with ray.
+
+                Returns
+                -------
+                lr_scores_tmp : numpy.ndarray
+                    The logistic regression scores for the range of
+                    number of epochs.
+
+                nn_times_tmp : numpy.ndarray
+                    The logistic regression times for the range of
+                    number of epochs.
+                """
                 lr_classifier = nn.FFNNLogisticRegressor(
                     input_data = self.X,
                     true_output = self.y,
@@ -235,6 +287,9 @@ class CompareNNAndLogistic:
                 lr_scores_tmp = np.zeros(self.n_n_epochs)
                 lr_times_tmp = np.zeros(self.n_n_epochs)
                 for i in range(self.n_n_epochs):
+                    """
+                    Loop over the number of epochs.
+                    """
                     print(f"\nrepetition {rep+1} of {self.n_repetitions}")
                     print(f"{i+1} of {self.n_n_epochs}, {self.n_epochs[i]=}")
                     
@@ -246,25 +301,46 @@ class CompareNNAndLogistic:
                 return lr_scores_tmp, lr_times_tmp
             
             if (which == "both") or (which == "nn"):
+                """
+                Parallelize the repetition of the neural network
+                calculations.
+                """
                 nn_parallel = []
                 for rep in range(self.n_repetitions):
+                    """
+                    The different processes are created here.
+                    """
                     nn_parallel.append(nn_func.remote())
                 
                 for res in ray.get(nn_parallel):
+                    """
+                    The parallel work is performed and extracted here.
+                    """
                     nn_scores_tmp, nn_times_tmp = res
                     nn_scores += nn_scores_tmp
                     nn_times += nn_times_tmp
 
             if (which == "both") or (which == "lr"):
+                """
+                Parallelize the repetition of the logistic regression
+                calculations.
+                """
                 lr_parallel = []
                 for rep in range(self.n_repetitions):
+                    """
+                    The different processes are created here.
+                    """
                     lr_parallel.append(lr_func.remote())
 
                 for res in ray.get(lr_parallel):
+                    """
+                    The parallel work is performed and extracted here.
+                    """
                     lr_scores_tmp, lr_times_tmp = res
                     lr_scores += lr_scores_tmp
                     lr_times += lr_times_tmp
-                
+
+            # Average the data.                
             nn_scores /= self.n_repetitions
             lr_scores /= self.n_repetitions
             nn_times /= self.n_repetitions
@@ -276,8 +352,14 @@ class CompareNNAndLogistic:
                 np.save(file="data_files/task_e_lr_scores" + self.name, arr=lr_scores)
             # np.save(file="data_files/task_e_nn_times" + self.name, arr=nn_times)   # WARNING: TIMING DOES NOT WORK WITH RAY
             # np.save(file="data_files/task_e_lr_times" + self.name, arr=lr_times)
+
+            print("Complete!")
+            print(f"{self.name=}")
     
     def plot_data(self):
+        """
+        Plot the data with parameters specified in the constructor.
+        """
         try:
             nn_scores = np.load(file="data_files/task_e_nn_scores" + self.name)
             lr_scores = np.load(file="data_files/task_e_lr_scores" + self.name)
@@ -297,18 +379,70 @@ class CompareNNAndLogistic:
         fig0.savefig(fname="../fig/task_e_nn_lr_score_n_epochs.png" + self.name[:-4] + ".png", dpi=300)
         plt.show()
 
-        # # WARNING: TIMING DOES NOT WORK WITH RAY
-        # fig1, ax1 = plt.subplots(figsize=(9, 7))
-        # ax1.plot(nn_times[1:], nn_scores[1:], label="Neural network", color="grey")
-        # ax1.plot(lr_times[1:], lr_scores[1:], label="Logistic regression", color="black", linestyle="dashed")
-        # ax1.legend(fontsize=15)
-        # ax1.tick_params(labelsize=15)
-        # ax1.set_xlabel(r"Time(# batches) [s]", fontsize=15)
-        # ax1.set_ylabel("Score", fontsize=15)
-        # ax1.set_title(f"NN max: {np.max(nn_scores):.4f}, LR max: {np.max(lr_scores):.4f}", fontsize=15)
-        # ax1.grid()
-        # fig1.savefig(fname="../fig/task_e_nn_lr_score_time" + name[:-4] + ".png", dpi=300)
-        # plt.show()
+
+def plot_specific_files_lr_and_several_nn():
+    """
+    Import pre-generated data from numpy binaries and plot.  Plot nn
+    scores for 1, 2, and 3 hidden layers with scores for logistic
+    regression.
+    """
+    fname0 = "data_files/task_e_nn_scores_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50, 25).npy"
+    fname1 = "data_files/task_e_nn_scores_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50,).npy"
+    fname2 = "data_files/task_e_lr_scores_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50,).npy"
+    fname3 = "data_files/task_e_nn_scores_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50, 25, 25).npy"
+    
+    nn_scores_two_layers = np.load(fname0)
+    nn_scores_one_layer = np.load(fname1)
+    nn_scores_three_layers = np.load(fname3)
+    lr_scores = np.load(fname2)
+    n_epochs = np.arange(10, 250+1, 5)  # This range is inferred from the filenames.
+    
+    fig0, ax0 = plt.subplots(figsize=(9, 7))
+    ax0.plot(n_epochs, nn_scores_one_layer, label="Neural network (50,)",
+        color="black")
+    ax0.plot(n_epochs, nn_scores_two_layers, label="Neural network (50,25)",
+        color="black", linestyle="dashed")
+    ax0.plot(n_epochs, nn_scores_three_layers, label="Neural network (50,25,25)",
+        color="black", linestyle="dotted")
+    ax0.plot(n_epochs, lr_scores, label="Logistic regression", color="maroon")
+    ax0.legend(fontsize=15)
+    ax0.tick_params(labelsize=15)
+    ax0.set_xlabel(r"# epochs", fontsize=15)
+    ax0.set_ylabel("Score", fontsize=15)
+    ax0.set_title(f"NN max: {np.max([np.max(nn_scores_one_layer), np.max(nn_scores_two_layers)]):.4f}, LR max: {np.max(lr_scores):.4f}", fontsize=15)
+    ax0.grid()
+    fig0.savefig(fname="../fig/task_e_scores_epochs_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50,25,25).png", dpi=300)
+    plt.show()
+
+def plot_specific_files_lr_and_nn_times():
+    """
+    Import pre-generated data from numpy binaries and plot.  Plot nn and
+    lr times as a function of scores.  The scores are a function of
+    numbers of epochs.
+    """
+    fname0 = "data_files/task_e_nn_times_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=50.npy"
+    fname1 = "data_files/task_e_lr_times_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=50.npy"
+    fname2 = "data_files/task_e_nn_scores_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50,).npy"
+    fname3 = "data_files/task_e_lr_scores_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50,).npy"
+
+    nn_times = np.load(file=fname0)
+    lr_times = np.load(file=fname1)
+    nn_scores = np.load(file=fname2)
+    lr_scores = np.load(file=fname3)
+
+    fig1, ax1 = plt.subplots(figsize=(9, 7))
+    ax1.plot(nn_times[1:], nn_scores[1:], label="Neural network (50)",
+        color="black")
+    ax1.plot(lr_times[1:], lr_scores[1:], label="Logistic regression",
+        color="maroon")
+    ax1.legend(fontsize=15)
+    ax1.tick_params(labelsize=15)
+    ax1.set_xlabel(r"Time(# batches) [s]", fontsize=15)
+    ax1.set_ylabel("Score", fontsize=15)
+    ax1.set_title(f"NN max: {np.max(nn_scores):.4f}, LR max: {np.max(lr_scores):.4f}", fontsize=15)
+    ax1.grid()
+    fig1.savefig(fname="../fig/task_e_nn_lr_score_time.png", dpi=300)
+    plt.show()
 
 
 def compare_logistic_regression_and_neural_network_classification_n_epochs():
@@ -421,8 +555,10 @@ def compare_logistic_regression_and_neural_network_classification_n_epochs():
 if __name__ == "__main__":
     # compare_logistic_regression_and_neural_network_classification_learning_rates()
     # compare_logistic_regression_and_neural_network_classification_batch_sizes()
-    compare_logistic_regression_and_neural_network_classification_n_epochs()
+    # compare_logistic_regression_and_neural_network_classification_n_epochs()
     # q = CompareNNAndLogistic()
     # q.generate_data(which="nn")
+    plot_specific_files_lr_and_several_nn()
+    # plot_specific_files_lr_and_nn_times()
     # q.plot_data()
     pass
