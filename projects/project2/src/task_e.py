@@ -9,6 +9,11 @@ import activation_functions as af
 
 
 def compare_logistic_regression_and_neural_network_classification_learning_rates():
+    """
+    Vary the learning rates and compare neural network and logistic
+    regression.  Data not directly used in the report, but used for
+    underway analyses of the parameters.
+    """
     digits = datasets.load_digits()
     X = digits.images
     y = digits.target
@@ -52,7 +57,13 @@ def compare_logistic_regression_and_neural_network_classification_learning_rates
         debug = False)
 
     for rep in range(n_repetitions):
+        """
+        Repeat the experiment and average the data.
+        """
         for i in range(n_learning_rates):
+            """
+            Loop over the different number of learning rates.
+            """
             print(f"\nrepetition {rep+1} of {n_repetitions}")
             print(f"{i+1} of {n_learning_rates}, {learning_rates[i]=}")
             nn_classifier.train_neural_network(learning_rate=learning_rates[i])
@@ -76,6 +87,11 @@ def compare_logistic_regression_and_neural_network_classification_learning_rates
 
 
 def compare_logistic_regression_and_neural_network_classification_batch_sizes():
+    """
+    Vary the batch sizes and compare neural network and logistic
+    regression.  Data not directly used in the report, but used for
+    underway analyses of the parameters.
+    """
     digits = datasets.load_digits()
     X = digits.images
     y = digits.target
@@ -119,7 +135,13 @@ def compare_logistic_regression_and_neural_network_classification_batch_sizes():
         debug = False)
 
     for rep in range(n_repetitions):
+        """
+        Repeat the experiment and average the data.
+        """
         for i in range(n_batch_sizes):
+            """
+            Loop over the number of batch sizes.
+            """
             print(f"\nrepetition {rep+1} of {n_repetitions}")
             print(f"{i+1} of {n_batch_sizes}, {batch_sizes[i]=}")
             
