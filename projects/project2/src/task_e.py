@@ -1,14 +1,13 @@
 import sys
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import datasets
-from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import scale
 import ray
 import neural_network as nn
 import activation_functions as af
-import common
 
 
 def compare_logistic_regression_and_neural_network_classification_learning_rates():
@@ -196,6 +195,7 @@ class CompareNNAndLogistic:
         self.name += f"_batch_size={self.batch_size}"
         self.name += f"_hidden_layer_sizes={self.hidden_layer_sizes}.npy"
 
+
     def generate_data(self, which="both"):
         """
         Generate logistic regression and neural network data based on
@@ -381,6 +381,7 @@ class CompareNNAndLogistic:
             print("Complete!")
             print(f"{self.name=}")
     
+
     def plot_data(self):
         """
         Plot the data with parameters specified in the constructor.
@@ -578,39 +579,249 @@ def compare_logistic_regression_and_neural_network_classification_n_epochs():
     plt.show()
 
 
-def compare_logistic_regression_and_sckikit_learn():
+def compare_score_logistic_regression_and_sckikit_learn():
     digits = datasets.load_digits()
     X = digits.images
     y = digits.target
 
-    n_repetitions = 1
+    n_repetitions = 30
 
-    lr_classifier = nn.FFNNLogisticRegressor(
-        input_data = X,
-        true_output = y,
-        hidden_layer_sizes = (),
-        n_categories = 10,
-        n_epochs = 100,
-        batch_size = 20,
-        output_activation_function = af.softmax,
-        cost_function_derivative = af.cross_entropy_derivative_with_softmax,
-        scaling = True,
-        verbose = True,
-        debug = False)
+    max_iterations = np.arange(10, 250+1, 10)
+    n_max_iterations = len(max_iterations)
+    name = f"_{n_repetitions=}_max_iterations_{max_iterations[0]}_{max_iterations[-1]}_{n_max_iterations}.npy"
 
-    lr_classifier.train_neural_network(learning_rate=common.a_good_learning_rate)
-    score = lr_classifier.score(lr_classifier.X_test, lr_classifier.y_test)
-    print(score)
+    try:
+        lr_scores = np.load(file="data_files/task_e_compare_logistic_sklearn_lr_scores" + name)
+        skl_scores = np.load(file="data_files/task_e_compare_logistic_sklearn_skl_scores" + name)
+        # lr_times = np.load(file="data_files/task_e_compare_logistic_sklearn_lr_times" + name)
+        # skl_times = np.load(file="data_files/task_e_compare_logistic_sklearn_skl_times" + name)
+    except FileNotFoundError:
+        lr_scores = np.zeros(shape=n_max_iterations)
+        lr_times = np.zeros(shape=n_max_iterations)
+        skl_scores = np.zeros(shape=n_max_iterations)
+        skl_times = np.zeros(shape=n_max_iterations)
 
-    X_train, X_test, y_train, y_test = \
-        train_test_split(X.reshape(X.shape[0], -1), y, test_size=0.2, shuffle=True)
-    X_train = scale(X_train)
+        ray.init()
+        @ray.remote
+        def lr_func():
+            lr_scores_tmp = np.zeros(shape=n_max_iterations)
+            lr_times_tmp = np.zeros(shape=n_max_iterations)
+            for i in range(n_max_iterations):
+                print(f"\n{rep+1} of {n_repetitions}")
+                lr_classifier = nn.FFNNLogisticRegressor(
+                    input_data = X,
+                    true_output = y,
+                    hidden_layer_sizes = (),
+                    n_categories = 10,
+                    n_epochs = max_iterations[i],
+                    batch_size = 20,
+                    output_activation_function = af.softmax,
+                    cost_function_derivative = af.cross_entropy_derivative_with_softmax,
+                    scaling = True,
+                    verbose = True,
+                    debug = False)
+
+                lr_classifier.train_neural_network(learning_rate=0.0048, lambd=0)
+                lr_scores_tmp[i] += lr_classifier.score(lr_classifier.X_test, lr_classifier.y_test)
+                lr_times_tmp[i] += lr_classifier.stopwatch
+
+            return lr_scores_tmp, lr_times_tmp
+
+
+        @ray.remote
+        def skl_func():
+            skl_scores_tmp = np.zeros(shape=n_max_iterations)
+            skl_times_tmp = np.zeros(shape=n_max_iterations)
+            for i in range(n_max_iterations):
+                print(f"\n{rep+1} of {n_repetitions}")
+                
+                X_train, X_test, y_train, y_test = \
+                    train_test_split(X.reshape(X.shape[0], -1), y, test_size=0.2, shuffle=True)
+
+                clf = MLPClassifier(
+                    max_iter = max_iterations[i],
+                    hidden_layer_sizes = (),
+                    batch_size = 20,
+                    tol = 1e-10,    # Just an arbitrary low number to force max_iter.
+                    activation = "logistic",
+                    solver = "sgd",
+                    learning_rate = "constant",
+                    learning_rate_init = 0.2094736842105263,
+                    alpha = 0,  # L2 penalty.
+                    verbose = False)
+
+                skl_time = time.time()
+                clf.fit(X_train, y_train)
+                skl_time = time.time() - skl_time
+                skl_times_tmp[i] += skl_time
+                print(f"{skl_time=}")
+                skl_scores_tmp[i] += clf.score(X_test, y_test)
+
+            return skl_scores_tmp, skl_times_tmp
+
+        skl_parallel = []
+
+        for rep in range(n_repetitions):
+            """
+            The different processes are created here.
+            """
+            skl_parallel.append(skl_func.remote())
+        
+        for res in ray.get(skl_parallel):
+            """
+            The parallel work is performed and extracted here.
+            """
+            skl_scores_tmp, skl_times_tmp = res
+            skl_scores += skl_scores_tmp
+            skl_times += skl_times_tmp
+
+
+        lr_parallel = []
+        for rep in range(n_repetitions):
+            """
+            The different processes are created here.
+            """
+            lr_parallel.append(lr_func.remote())
+        
+        for res in ray.get(lr_parallel):
+            """
+            The parallel work is performed and extracted here.
+            """
+            lr_scores_tmp, lr_times_tmp = res
+            lr_scores += lr_scores_tmp
+            lr_times += lr_times_tmp
+
+        lr_scores /= n_repetitions
+        lr_times /= n_repetitions
+        skl_scores /= n_repetitions
+        skl_times /= n_repetitions
+
+        np.save(file="data_files/task_e_compare_logistic_sklearn_lr_scores" + name, arr=lr_scores)
+        np.save(file="data_files/task_e_compare_logistic_sklearn_skl_scores" + name, arr=skl_scores)
+        # np.save(file="data_files/task_e_compare_logistic_sklearn_lr_times" + name, arr=lr_times)
+        # np.save(file="data_files/task_e_compare_logistic_sklearn_skl_times" + name, arr=skl_times)
+
+    fig0, ax0 = plt.subplots(figsize=(9, 7))
+    ax0.plot(max_iterations, skl_scores, label="sklearn logistic regression", color="black")
+    ax0.plot(max_iterations, lr_scores, label="Logistic regression", color="maroon", linestyle="solid")
+    ax0.legend(fontsize=15)
+    ax0.tick_params(labelsize=15)
+    ax0.set_xlabel(r"# epochs", fontsize=15)
+    ax0.set_ylabel("Score", fontsize=15)
+    ax0.set_title(f"NN max: {np.max(skl_scores):.4f}, LR max: {np.max(lr_scores):.4f}", fontsize=15)
+    ax0.grid()
+    fig0.savefig(fname="../fig/task_e_compare_logistic_sklearn_lr_scores.png", dpi=300)
+    plt.show()
+
+
+def compare_time_logistic_regression_and_sckikit_learn():
+    lr_times = np.load(file="data_files/task_e_compare_logistic_sklearn_lr_times_n_repetitions=2_max_iterations_10_250_25.npy")
+    skl_times = np.load(file="data_files/task_e_compare_logistic_sklearn_skl_times_n_repetitions=2_max_iterations_10_250_25.npy")
     
-    clf = LogisticRegression(penalty="l2", tol=1e-5, max_iter=1000)
-    clf.fit(X_train, y_train)
-    score = clf.score(X_test, y_test)
-    print(score)
+    max_iterations = np.arange(10, 250+1, 10)
+    fig0, ax0 = plt.subplots(figsize=(9, 7))
+    ax0.plot(max_iterations, skl_times, label="sklearn logistic regression", color="black")
+    ax0.plot(max_iterations, lr_times, label="Logistic regression", color="maroon", linestyle="solid")
+    ax0.legend(fontsize=15)
+    ax0.tick_params(labelsize=15)
+    ax0.set_xlabel(r"# epochs", fontsize=15)
+    ax0.set_ylabel("Time [s]", fontsize=15)
+    # ax0.set_title(f"NN max: {np.max(skl_times):.4f}, LR max: {np.max(lr_times):.4f}", fontsize=15)
+    ax0.grid()
+    fig0.savefig(fname="../fig/task_e_compare_logistic_sklearn_lr_times.png", dpi=300)
+    plt.show()
 
+def sklearn_logistic_max_iterations():
+    """
+    Find a good maximum number of iterations for sklearn MLPClassifier
+    with zero hidden layers (Logistic regression).
+    """
+    digits = datasets.load_digits()
+    X = digits.images
+    y = digits.target
+    
+    max_iterations = np.arange(600, 1000+1, 10)
+    n_max_iterations = len(max_iterations)
+    scores = np.zeros(n_max_iterations)
+
+    for i in range(n_max_iterations):
+        X_train, X_test, y_train, y_test = \
+            train_test_split(X.reshape(X.shape[0], -1), y, test_size=0.2, shuffle=True)
+        # X_train = scale(X_train)
+        clf = MLPClassifier(
+            max_iter = max_iterations[i],
+            hidden_layer_sizes = (),
+            batch_size = 20,
+            tol = 1e-10,    # Just an arbitrary low number to force max_iter.
+            activation = "logistic",
+            solver = "sgd",
+            learning_rate = "constant",
+            # learning_rate_init = 0.917948717948718,
+            learning_rate_init = 0.2094736842105263,
+            alpha = 0,  # L2 penalty.
+            verbose = False)
+
+        sklearn_time = time.time()
+        clf.fit(X_train, y_train)
+        sklearn_time = time.time() - sklearn_time
+        print(f"\n{sklearn_time=}")
+        scores[i] = clf.score(X_test, y_test)
+        print(scores[i])
+
+    max_score_idx = np.argmax(scores)
+    print(f"{scores[max_score_idx]=} at {max_iterations[max_score_idx]=}")
+
+    plt.plot(max_iterations, scores)
+    plt.title(f"{scores[max_score_idx]} at {max_iterations[max_score_idx]}")
+    plt.xlabel("Max iterations")
+    plt.ylabel("Scores")
+    plt.show()
+
+
+def sklearn_logistic_learning_rates():
+    """
+    Find a good learning rate for sklearn MLPClassifier with zero hidden
+    layers (Logistic regression).
+    """
+    digits = datasets.load_digits()
+    X = digits.images
+    y = digits.target
+
+    n_learning_rates = 20
+    learning_rates = np.linspace(0.18, 0.25, n_learning_rates)
+    scores = np.zeros(n_learning_rates)
+
+    for i in range(n_learning_rates):
+        X_train, X_test, y_train, y_test = \
+            train_test_split(X.reshape(X.shape[0], -1), y, test_size=0.2, shuffle=True)
+        # X_train = scale(X_train)  # Dont scale. It fucks up the score.
+        
+        clf = MLPClassifier(
+            max_iter = 1000,
+            hidden_layer_sizes = (),
+            batch_size = 20,
+            tol = 1e-10,    # Just an arbitrary low number to force max_iter.
+            activation = "logistic",
+            solver = "sgd",
+            learning_rate = "constant",
+            learning_rate_init = learning_rates[i],
+            alpha = 0,  # L2 penalty.
+            verbose = False)
+
+        sklearn_time = time.time()
+        clf.fit(X_train, y_train)
+        sklearn_time = time.time() - sklearn_time
+        print(f"\n{sklearn_time=}")
+        scores[i] = clf.score(X_test, y_test)
+        print(scores[i])
+
+    max_score_idx = np.argmax(scores)
+    print(f"{scores[max_score_idx]} at {learning_rates[max_score_idx]}")
+
+    plt.plot(learning_rates, scores)
+    plt.title(f"{scores[max_score_idx]} at {learning_rates[max_score_idx]}")
+    plt.show()
+    
 
 if __name__ == "__main__":
     # compare_logistic_regression_and_neural_network_classification_learning_rates()
@@ -621,5 +832,8 @@ if __name__ == "__main__":
     # q.plot_data()
     # plot_specific_files_lr_and_several_nn()
     # plot_specific_files_lr_and_nn_times()
-    compare_logistic_regression_and_sckikit_learn()
+    # compare_score_logistic_regression_and_sckikit_learn()
+    compare_time_logistic_regression_and_sckikit_learn()
+    # sklearn_logistic_max_iterations()
+    # sklearn_logistic_learning_rates()
     pass
