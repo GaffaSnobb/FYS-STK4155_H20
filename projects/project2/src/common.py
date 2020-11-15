@@ -298,7 +298,6 @@ class _StatTools:
             """
             t_step = epoch*n_data_per_batch   # Does not need to be calculated in the inner loop.
             
-            # for i in range(n_data_per_batch):
             for i in range(n_batches):
                 """
                 Loop over all data in each batch.  For each loop, a
@@ -367,6 +366,7 @@ class _StatTools:
     def stop_timing(self):
         self.stopwatch = time.time() - self.stopwatch
         print(f"{sys._getframe().f_back.f_code.co_name} time: {self.stopwatch:.4f} s")
+
 
     @property
     def mse(self):
