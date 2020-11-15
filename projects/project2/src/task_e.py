@@ -3,9 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import scale
 import ray
 import neural_network as nn
 import activation_functions as af
+import common
 
 
 def compare_logistic_regression_and_neural_network_classification_learning_rates():
@@ -436,6 +439,7 @@ def plot_specific_files_lr_and_several_nn():
     fig0.savefig(fname="../fig/task_e_scores_epochs_n_repetitions=30_n_n_epochs=49_epoch_range=[10_250]_learning_rate=0.0048_batch_size=20_hidden_layer_sizes=(50,25,25).png", dpi=300)
     plt.show()
 
+
 def plot_specific_files_lr_and_nn_times():
     """
     Import pre-generated data from numpy binaries and plot.  Plot nn and
@@ -574,13 +578,48 @@ def compare_logistic_regression_and_neural_network_classification_n_epochs():
     plt.show()
 
 
+def compare_logistic_regression_and_sckikit_learn():
+    digits = datasets.load_digits()
+    X = digits.images
+    y = digits.target
+
+    n_repetitions = 1
+
+    lr_classifier = nn.FFNNLogisticRegressor(
+        input_data = X,
+        true_output = y,
+        hidden_layer_sizes = (),
+        n_categories = 10,
+        n_epochs = 100,
+        batch_size = 20,
+        output_activation_function = af.softmax,
+        cost_function_derivative = af.cross_entropy_derivative_with_softmax,
+        scaling = True,
+        verbose = True,
+        debug = False)
+
+    lr_classifier.train_neural_network(learning_rate=common.a_good_learning_rate)
+    score = lr_classifier.score(lr_classifier.X_test, lr_classifier.y_test)
+    print(score)
+
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X.reshape(X.shape[0], -1), y, test_size=0.2, shuffle=True)
+    X_train = scale(X_train)
+    
+    clf = LogisticRegression(penalty="l2", tol=1e-5, max_iter=1000)
+    clf.fit(X_train, y_train)
+    score = clf.score(X_test, y_test)
+    print(score)
+
+
 if __name__ == "__main__":
     # compare_logistic_regression_and_neural_network_classification_learning_rates()
     # compare_logistic_regression_and_neural_network_classification_batch_sizes()
     # compare_logistic_regression_and_neural_network_classification_n_epochs()
     # q = CompareNNAndLogistic()
     # q.generate_data(which="nn")
-    plot_specific_files_lr_and_several_nn()
-    # plot_specific_files_lr_and_nn_times()
     # q.plot_data()
+    # plot_specific_files_lr_and_several_nn()
+    # plot_specific_files_lr_and_nn_times()
+    compare_logistic_regression_and_sckikit_learn()
     pass
