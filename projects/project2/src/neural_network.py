@@ -184,19 +184,19 @@ class _FFNN:
             train_test_split(self.X, self.y, test_size=0.2, shuffle=True) 
 
         if self.scaling:
-            self.X_mean = np.mean(self.X_train)
-            self.X_std = np.std(self.X_train)
-            self.X_train = (self.X_train - self.X_mean)/self.X_std
-            self.X_test = (self.X_test - self.X_mean)/self.X_std
+            X_mean = np.mean(self.X_train)
+            X_std = np.std(self.X_train)
+            self.X_train = (self.X_train - X_mean)/X_std
+            self.X_test = (self.X_test - X_mean)/X_std
 
             if subclass == "regressor":
                 """
                 Classifier should not scale the y data.
                 """
-                self.y_mean = np.mean(self.y_train)
-                self.y_std = np.std(self.y_train)
-                self.y_train = (self.y_train - self.y_mean)/self.y_std
-                self.y_test = (self.y_test - self.y_mean)/self.y_std
+                y_mean = np.mean(self.y_train)
+                y_std = np.std(self.y_train)
+                self.y_train = (self.y_train - y_mean)/y_std
+                self.y_test = (self.y_test - y_mean)/y_std
         
         if subclass == "classifier":
             """
@@ -455,7 +455,7 @@ class FFNNLogisticRegressor(FFNNClassifier):
             sys.exit()
 
         self.X_train, self.X_test, self.y_train, self.y_test = \
-            train_test_split(self.X, self.y, test_size=0.2, shuffle=True) 
+            train_test_split(self.X, self.y, test_size=0.2, shuffle=True)
             
         if self.scaling:
             X_mean = np.mean(self.X_train)
