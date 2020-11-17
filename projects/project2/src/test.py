@@ -37,6 +37,10 @@ class Example2D(common._StatTools):
 
 
 class FFNNSingle(nn._FFNN):
+    """
+    Neural network with hard-coded single layer.  Code mostly from
+    https://compphysics.github.io/MachineLearning/doc/pub/week41/html/week41.html.
+    """
     def __init__(self, input_data, true_output, verbose=False):
         """
         Parameters
