@@ -45,7 +45,7 @@ def compare_logistic_regression_and_neural_network_classification_learning_rates
         verbose = True,
         debug = False)
 
-    lr_classifier = nn.FFNNLogisticRegressor(
+    lr_classifier = nn.LogisticRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(),
@@ -123,7 +123,7 @@ def compare_logistic_regression_and_neural_network_classification_batch_sizes():
         verbose = True,
         debug = False)
 
-    lr_classifier = nn.FFNNLogisticRegressor(
+    lr_classifier = nn.LogisticRegressor(
         input_data = X,
         true_output = y,
         hidden_layer_sizes=(),
@@ -296,7 +296,7 @@ class CompareNNAndLogistic:
                     The logistic regression times for the range of
                     number of epochs.
                 """
-                lr_classifier = nn.FFNNLogisticRegressor(
+                lr_classifier = nn.LogisticRegressor(
                     input_data = self.X,
                     true_output = self.y,
                     hidden_layer_sizes = (),
@@ -406,7 +406,7 @@ class CompareNNAndLogistic:
         plt.show()
 
 
-def plot_specific_files_lr_and_several_nn():
+def compare_lr_and_several_nn():
     """
     Import pre-generated data from numpy binaries and plot.  Plot nn
     scores for 1, 2, and 3 hidden layers with scores for logistic
@@ -441,7 +441,7 @@ def plot_specific_files_lr_and_several_nn():
     plt.show()
 
 
-def plot_specific_files_lr_and_nn_times():
+def compare_lr_and_nn_times():
     """
     Import pre-generated data from numpy binaries and plot.  Plot nn and
     lr times as a function of scores.  The scores are a function of
@@ -519,7 +519,7 @@ def compare_logistic_regression_and_neural_network_classification_n_epochs():
             verbose = True,
             debug = False)
 
-        lr_classifier = nn.FFNNLogisticRegressor(
+        lr_classifier = nn.LogisticRegressor(
             input_data = X,
             true_output = y,
             hidden_layer_sizes=(),
@@ -608,7 +608,7 @@ def compare_score_logistic_regression_and_sckikit_learn():
             lr_times_tmp = np.zeros(shape=n_max_iterations)
             for i in range(n_max_iterations):
                 print(f"\n{rep+1} of {n_repetitions}")
-                lr_classifier = nn.FFNNLogisticRegressor(
+                lr_classifier = nn.LogisticRegressor(
                     input_data = X,
                     true_output = y,
                     hidden_layer_sizes = (),
@@ -720,16 +720,19 @@ def compare_time_logistic_regression_and_sckikit_learn():
     
     max_iterations = np.arange(10, 250+1, 10)
     fig0, ax0 = plt.subplots(figsize=(9, 7))
-    ax0.plot(max_iterations, skl_times, label="sklearn logistic regression", color="black")
-    ax0.plot(max_iterations, lr_times, label="Logistic regression", color="maroon", linestyle="solid")
+    ax0.plot(max_iterations, skl_times, label="sklearn logistic regression",
+        color="black")
+    ax0.plot(max_iterations, lr_times, label="Logistic regression",
+        color="maroon", linestyle="solid")
     ax0.legend(fontsize=15)
     ax0.tick_params(labelsize=15)
     ax0.set_xlabel(r"# epochs", fontsize=15)
     ax0.set_ylabel("Time [s]", fontsize=15)
-    # ax0.set_title(f"NN max: {np.max(skl_times):.4f}, LR max: {np.max(lr_times):.4f}", fontsize=15)
     ax0.grid()
-    fig0.savefig(fname="../fig/task_e_compare_logistic_sklearn_lr_times.png", dpi=300)
+    fig0.savefig(fname="../fig/task_e_compare_logistic_sklearn_lr_times.png",
+        dpi=300)
     plt.show()
+
 
 def sklearn_logistic_max_iterations():
     """
@@ -824,16 +827,16 @@ def sklearn_logistic_learning_rates():
     
 
 if __name__ == "__main__":
+    compare_lr_and_several_nn()
+    compare_lr_and_nn_times()
+    compare_score_logistic_regression_and_sckikit_learn()
+    compare_time_logistic_regression_and_sckikit_learn()
+    
     # compare_logistic_regression_and_neural_network_classification_learning_rates()
     # compare_logistic_regression_and_neural_network_classification_batch_sizes()
-    # compare_logistic_regression_and_neural_network_classification_n_epochs()
     # q = CompareNNAndLogistic()
     # q.generate_data(which="nn")
     # q.plot_data()
-    # plot_specific_files_lr_and_several_nn()
-    # plot_specific_files_lr_and_nn_times()
-    # compare_score_logistic_regression_and_sckikit_learn()
-    compare_time_logistic_regression_and_sckikit_learn()
     # sklearn_logistic_max_iterations()
     # sklearn_logistic_learning_rates()
     pass
