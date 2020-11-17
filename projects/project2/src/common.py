@@ -3,7 +3,10 @@ import sys
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
-from sklearn.linear_model import Lasso
+from sklearn.linear_model import Lasso, SGDRegressor
+from sklearn.utils.testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
+import numba
 
 a_good_learning_rate = 0.09316326530612246
 
@@ -258,10 +261,10 @@ class _StatTools:
         if self.verbose: self.stop_timing()
 
 
-    def stochastic_gradient_descent(self, n_epochs, n_batches,
-        input_step_size=None, lambd=0):
+    def mini_batch_gradient_descent(self, n_epochs, n_batches,
+        input_learning_rate=None, lambd=0, n_data_per_batch=None):
         """
-        Solve for beta using stochastic gradient descent with momentum.
+        Solve for beta using mini-batch gradient descent with momentum.
 
         Parameters
         ----------
@@ -277,7 +280,7 @@ class _StatTools:
             Ridge regression penalty parameter.  Defaults to 0 where no
             ridge penalty is applied.
 
-        input_step_size : NoneType, float
+        input_learning_rate : NoneType, float
             The gradient step size / learning rate.  Defaults to None
             where a dynamic step size is used.
         """
@@ -285,7 +288,8 @@ class _StatTools:
         if self.verbose: self.start_timing()
         
         rest = self.n_data_total%n_batches # The rest after equally splitting X into batches.
-        n_data_per_batch = self.n_data_total//n_batches # Index step size.
+        if n_data_per_batch is None:
+            n_data_per_batch = self.n_data_total//n_batches # Index step size.
         # Indices of X corresponding to start point of the batches.
         batch_indices = np.arange(0, self.n_data_total-rest, n_data_per_batch)
 
@@ -310,16 +314,71 @@ class _StatTools:
                 y = self.y_train[random_index:random_index+n_data_per_batch]
                 t_step += i
                 
-                if input_step_size is None:
-                    step_size = step_length(t=t_step, t0=5, t1=50)
-                else: step_size = input_step_size
+                if input_learning_rate is None:
+                    learning_rate = step_length(t=t_step, t0=5, t1=50)
+                else: learning_rate = input_learning_rate
 
-                gradient = X.T@((X@self.beta) - y)*2/n_data_per_batch
-                gradient += 2*lambd*self.beta   # Ridge addition.
-                momentum = momentum_parameter*momentum + step_size*gradient
+                # gradient = X.T@((X@self.beta) - y)*2/n_data_per_batch
+                # gradient += 2*lambd*self.beta   # Ridge addition.
+                # momentum = momentum_parameter*momentum + learning_rate*gradient
+                # self.beta -= momentum
+                momentum = self.func(X, y, self.beta, n_data_per_batch, lambd, momentum_parameter, momentum, learning_rate)
                 self.beta -= momentum
 
         if self.verbose: self.stop_timing()
+
+
+    def stochastic_gradient_descent(self, n_epochs, input_learning_rate=None,
+        lambd=0):
+        """
+        Solve for beta using stochastic gradient descent with momentum.
+
+        Parameters
+        ----------
+        n_epochs : int
+            The number of epochs.
+
+        n_batches : int
+            The number of batches.  If the number of rows in the design
+            matrix does not divide by n_batches, the rest rows are
+            discarded.
+
+        lambd : float
+            Ridge regression penalty parameter.  Defaults to 0 where no
+            ridge penalty is applied.
+
+        input_learning_rate : NoneType, float
+            The gradient step size / learning rate.  Defaults to None
+            where a dynamic step size is used.
+        """
+        self.n_data_per_batch = 1
+        self.mini_batch_gradient_descent(
+            n_epochs = n_epochs,
+            n_batches = self.n_data_total,
+            input_learning_rate = input_learning_rate,
+            lambd = lambd,
+            n_data_per_batch = 1)
+
+
+    @staticmethod
+    @numba.njit
+    def func(X, y, beta, n_data_per_batch, lambd, momentum_parameter, momentum, learning_rate):
+        gradient = X.T@((X@beta) - y)*2/n_data_per_batch
+        gradient += 2*lambd*beta   # Ridge addition.
+        momentum = momentum_parameter*momentum + learning_rate*gradient
+
+        return momentum
+
+
+    @ignore_warnings(category=ConvergenceWarning)
+    def regression_with_sklearn(self, n_epochs, step, alpha=0):
+        if alpha == 0:
+            S = SGDRegressor(max_iter=n_epochs, penalty=None, eta0=step)
+        else:
+            S = SGDRegressor(max_iter=n_epochs, alpha=alpha, eta0=step)
+        S.fit(self.X_train,self.y_train)
+        self.y_sklearn_train = S.predict(self.X_train)
+        self.y_sklearn_test = S.predict(self.X_test)
 
 
     def _split_scale(self):
@@ -375,6 +434,13 @@ class _StatTools:
 
         return mse_train, mse_test
 
+
+    @property
+    def mse_sklearn(self):
+        mse_train = mean_squared_error(self.y_train, self.y_sklearn_train)
+        mse_test = mean_squared_error(self.y_test, self.y_sklearn_test)
+
+        return mse_train, mse_test
 
 class Regression:
     using_ridge = False # For suppressing repeated messages.
