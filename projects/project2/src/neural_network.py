@@ -439,7 +439,7 @@ class FFNNRegressor(_FFNN):
         return self.mse_train, self.mse_test, self.r_train, self.r_test
 
 
-class FFNNLogisticRegressor(FFNNClassifier):
+class LogisticRegressor(FFNNClassifier):
     """
     This logistic regression implementation is simply a neural network
     with no hidden layers.
