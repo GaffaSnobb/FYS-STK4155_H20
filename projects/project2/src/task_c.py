@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
 import seaborn as sns
 import neural_network as nn
 import activation_functions as af
@@ -8,6 +7,10 @@ import common
 
 
 def regression_relu():
+    """
+    Results not directly used in the report.  Underway testing of the
+    code and parameters.
+    """
     # np.random.seed(1337)
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
@@ -64,15 +67,12 @@ def regression_relu():
     plt.legend()
     plt.show()
 
-    # plt.plot(learning_rates, r_train, label="train")
-    # plt.plot(learning_rates, r_test, label="test")
-    # plt.xlabel("learning rates")
-    # plt.ylabel("r_score")
-    # plt.legend()
-    # plt.show()
-
 
 def regression_leaky_relu():
+    """
+    Results not directly used in the report.  Underway testing of the
+    code and parameters.
+    """
     # np.random.seed(1337)
     n_data_total = 400
     x1 = np.random.uniform(0, 1, n_data_total)
@@ -146,25 +146,9 @@ def regression_leaky_relu():
     cbar = ax.collections[0].colorbar
     cbar.ax.tick_params(labelsize=15)
     cbar.ax.set_ylabel('MSE', fontsize=15, rotation=90)
-
-
-    plt.savefig(fname="../fig/task_c_leaky_relu_lambda_eta.png", dpi=300)
+    # plt.savefig(fname="../fig/task_c_leaky_relu_lambda_eta.png", dpi=300)
     plt.show()
 
-    # plt.title("leaky relu")
-    # plt.plot(learning_rates, mse_train, label=f"train")
-    # plt.plot(learning_rates, mse_test, label=f"test")
-    # plt.xlabel("learning rates")
-    # plt.ylabel("mse")
-    # plt.legend()
-    # plt.show()
-
-    # plt.plot(learning_rates, r_train, label="train")
-    # plt.plot(learning_rates, r_test, label="test")
-    # plt.xlabel("learning rates")
-    # plt.ylabel("r_score")
-    # plt.legend()
-    # plt.show()
 
 
 if __name__ == "__main__":
