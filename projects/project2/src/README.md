@@ -25,7 +25,7 @@ Testing is performed by ```test.py``` which compares our implementation of a mul
 
 
 ### Report
-The report is located in ```/doc```, and all figures for the report is located in ```/fig```.
+The report is located in ```doc/```, and all figures for the report is located in ```fig/```.
 
 ### Compatibility
 All code is programmed in ```Python 3.8.5```. Earlier versions will probably work fine, but we guarantee full compatibility only with ```3.8.5```. Python packages used and their versions are: ```sklearn 0.23.2```, ```numpy 1.19.1```, ```matplotlib 3.3.1```, ```pytest 6.1.1```, ```seaborn 0.11.0```, ```ray 1.0.1```.
