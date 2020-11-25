@@ -29,10 +29,11 @@ def to_sequences(data, seq_len):
     # d = np.zeros(shape = N, dtype = np.ndarray)
 
     for i in range(N):
-        d.append(data[i: i + seq_len])
         # d[i] = data[i:i + seq_len]
+        d.append(data[i: i + seq_len])
 
     return np.array(d)
+    # return d
 
 
 def train_test_split(data_raw, seq_len, train_size):
@@ -52,154 +53,260 @@ def train_test_split(data_raw, seq_len, train_size):
         the dataset to include in the train split.
     """
     data = to_sequences(data_raw, seq_len)
-
     num_train = int(train_size*data.shape[0])  # Number of training data.
 
-    X_train = data[:num_train, :-1, :]
-    y_train = data[:num_train, -1, :]
-
     X_test = data[num_train:, :-1, :]
+    X_train = data[:num_train, :-1, :]
+    
     y_test = data[num_train:, -1, :]
+    y_train = data[:num_train, -1, :]
 
     return X_train, y_train, X_test, y_test
 
 
-def lstm():
-    SEQ_LEN = 100
-    TRAIN_SIZE = 0.95
-    WINDOW_SIZE = SEQ_LEN - 1
-    DROPOUT = 0.2
-    BATCH_SIZE = 64
-    EPOCHS = 50
-    DATA_START = 1500   # Start slice point.
-    NEURONS = 50
+class CryptoPrediction:
+    def __init__(self,
+            seq_len = 100,
+            train_size = 0.95,
+            dropout = 0.2,
+            batch_size = 64,
+            epochs = 50,
+            data_start = 0,
+            neurons = 50
+        ):
+        """
+        Parameters
+        ----------
+        seq_len : int
+            Sequence length for the reshaping of the data.
 
-    state_fname = f"saved_state/{SEQ_LEN=}"
-    state_fname += f"_{TRAIN_SIZE=}"
-    state_fname += f"_{WINDOW_SIZE=}"
-    state_fname += f"_{DROPOUT=}"
-    state_fname += f"_{BATCH_SIZE=}"
-    state_fname += f"_{EPOCHS=}"
-    state_fname += f"_{DATA_START=}"
-    state_fname += f"_{NEURONS=}.npy"
+        train_size : float
+            Should be between 0.0 and 1.0 and represent the proportion
+            of the dataset to include in the train split.
 
-    csv_path = "data/btc-usd-max.csv"
-    df = pd.read_csv(csv_path, parse_dates=['snapped_at'])
-    df = df.sort_values('snapped_at')   # Sort by date.
-    price = df.price.values.reshape(-1, 1)  # Reshape to fit the scaler.
+        dropout : float
+            Dropout fraction for all dropout layers.
 
-    price = price[DATA_START:]
+        batch_size : int
+            Number of samples per gradient update.
 
-    scaler = MinMaxScaler()
-    scaled_price = scaler.fit_transform(X=price)
-    scaled_price = scaled_price[~np.isnan(scaled_price)].reshape(-1, 1) # Remove all NaNs.
+        epochs : int
+            Number of epochs to train the model. An epoch is an
+            iteration over the entire x and y data provided.
 
-    train_test_split_time = time.time()
-    X_train, y_train, X_test, y_test =\
-        train_test_split(scaled_price, SEQ_LEN, TRAIN_SIZE)
-    train_test_split_time = time.time() - train_test_split_time
-    print(f"{train_test_split_time = }")
+        data_start : int
+            Start index of data slice.
 
-    # plt.plot(np.arange(len(df.price.values)), df.price.values)
-    # plt.show()
+        neurons : int
+            The number of neurons in each layer.
+        """
+        self.seq_len = seq_len
+        self.train_size = train_size
+        self.dropout = dropout
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.data_start = data_start
+        self.neurons = neurons
+        window_size = self.seq_len - 1
+        self.window_size = window_size
 
-    model = Sequential()
+        self.state_fname = f"saved_state/{seq_len=}"
+        self.state_fname += f"_{train_size=}"
+        self.state_fname += f"_{window_size=}"
+        self.state_fname += f"_{dropout=}"
+        self.state_fname += f"_{batch_size=}"
+        self.state_fname += f"_{epochs=}"
+        self.state_fname += f"_{data_start=}"
+        self.state_fname += f"_{neurons=}.npy"
 
-    model.add(LSTM(
-        units = NEURONS,
-        return_sequences = True,
-        input_shape = (WINDOW_SIZE, X_train.shape[-1]),
-        activation = 'tanh'
-    ))
 
-    model.add(Dropout(rate = DROPOUT))
+    def _initial_state(self, csv_path = "data/btc-usd-max.csv"):
+        """
+        Set up the initial state of the data.  Read data from csv.  Sort
+        dataframe and reshape price array to column vector.  Scale the
+        data.  Split into train and test sets.
 
-    model.add(LSTM(
-        units = NEURONS,
-        return_sequences = True,
-        activation = 'tanh'
-    ))
+        Parameters
+        ----------
+        csv_path : str
+            Path to csv file.
+        """
+        df = pd.read_csv(csv_path, parse_dates=['snapped_at'])
+        df = df.sort_values('snapped_at')   # Sort by date.
+        self.price = df.price.values.reshape(-1, 1)  # Reshape to fit the scaler.
+        self.price = self.price[self.data_start:] # Slice dataset.
 
-    model.add(Dropout(rate = DROPOUT))
+        self.scaler = MinMaxScaler()
+        self.scaled_price = self.scaler.fit_transform(X = self.price)
+        self.scaled_price = self.scaled_price[~np.isnan(self.scaled_price)] # Remove all NaNs.
+        self.scaled_price = self.scaled_price.reshape(-1, 1)    # Reshape to column.
 
-    model.add(LSTM(
-        units = NEURONS,
-        return_sequences = False,
-        activation = 'tanh'
-    ))
+        train_test_split_time = time.time()
+        self.X_train, self.y_train, self.X_test, self.y_test =\
+            train_test_split(self.scaled_price, self.seq_len, self.train_size)
+        train_test_split_time = time.time() - train_test_split_time
+        print(f"{train_test_split_time = }")
 
-    # model.add(Dropout(rate = DROPOUT))    # Dont know yet whether to use this also.
+        # plt.plot(np.arange(len(df.price.values)), df.price.values)
+        # plt.show()
 
-    model.add(Dense(units = 1))
-    
-    model.add(Activation(activation = 'linear'))
 
-    model.compile(
-        loss = 'mean_squared_error',
-        optimizer = 'adam'
-    )
+    def create_model(self,
+            hidden_activation = "tanh",
+            loss_function = "mean_squared_error"
+        ):
+        """
+        Set up the model.  Create layers.
+        """
+        self._initial_state()
+        self.model = Sequential()
 
-    try:
-        try:
-            if sys.argv[1] and os.path.isfile(state_fname):
-                choice = input("Do you really want to overwrite the state file? y/n: ")
-                if choice == "y":
-                    raise FileNotFoundError # Force overwrite of state.
-        except IndexError: pass
+        self.model.add(LSTM(
+            units = self.neurons,
+            return_sequences = True,
+            input_shape = (self.window_size, self.X_train.shape[-1]),
+            activation = hidden_activation
+        ))
+
+        self.model.add(Dropout(rate = self.dropout))
+
+        self.model.add(LSTM(
+            units = self.neurons,
+            return_sequences = True,
+            activation = hidden_activation
+        ))
+
+        self.model.add(Dropout(rate = self.dropout))
+
+        self.model.add(LSTM(
+            units = self.neurons,
+            return_sequences = False,
+            activation = hidden_activation
+        ))
+
+        # self.model.add(Dropout(rate = self.dropout))    # Dont know yet whether to use this also.
+
+        self.model.add(Dense(units = 1))
         
-        model.set_weights(np.load(file = state_fname, allow_pickle = True))  # Load and set weights from file.
-        val_loss = np.load(file = "saved_state/val_loss.npy")
-        loss = np.load(file = "saved_state/loss.npy")
-    
-    except FileNotFoundError:
-        history = model.fit(
-            x = X_train,
-            y = y_train,
-            epochs = EPOCHS,
-            batch_size = BATCH_SIZE,
-            shuffle = False,    # No shuffle for Time Series.
-            validation_split = 0.1
+        self.model.add(Activation(activation = 'linear'))
+
+        self.model.compile(
+            loss = loss_function,
+            optimizer = 'adam'
         )
+
+    
+    def train_model(self):
+        """
+        Train the model.  If state data is already saved, no training
+        will be performed.
+        """
+        self.create_model()
+        try:
+            """
+            Try to load the data from file.
+            """
+            try:
+                """
+                Input handling for cml argument. Try to index
+                sys.argv[1]. 
+                """
+                if sys.argv[1] and os.path.isfile(self.state_fname):
+                    """
+                    If sys.arv[1] is true, and file exists, prompt to
+                    overwrite saved state.
+                    """
+                    choice = input("Do you really want to overwrite the state file? y/n: ")
+                    if choice == "y":
+                        """
+                        If file overwrite is allowed by the user, raise
+                        a FileNotFoundError to force the except to kick
+                        in.
+                        """
+                        raise FileNotFoundError
+            
+            except IndexError:
+                """
+                If sys.argv[1] cannot be indexed, then no cml argument
+                is given, and the program will try to load the state
+                from file.
+                """
+                pass
+            
+            # Load and set weights from file.
+            self.model.set_weights(np.load(
+                file = self.state_fname,
+                allow_pickle = True
+                ))
+            val_loss = np.load(file = "saved_state/val_loss.npy")
+            loss = np.load(file = "saved_state/loss.npy")
+            print(f"State loaded from file '{self.state_fname}''.")
         
-        val_loss = history.history['val_loss']
-        loss = history.history['loss']
-        np.save(file = state_fname, arr = np.array(model.get_weights()), allow_pickle = True)
-        np.save(file = "saved_state/val_loss.npy", arr = val_loss)
-        np.save(file = "saved_state/loss.npy", arr = loss)
-
-    # plt.plot(loss, label="train")
-    # plt.plot(val_loss, label="test")
-    # plt.title('model loss')
-    # plt.ylabel('loss')
-    # plt.xlabel('epoch')
-    # plt.legend(loc='upper left')
-    # plt.show()
-
-    # y_predict = model.predict(X_test)
-    # y_test_inverse = scaler.inverse_transform(y_test)
-    # y_predict_inverse = scaler.inverse_transform(y_predict)
-
-    # plt.plot(y_test_inverse, label="Actual Price", color='green')
-    # plt.plot(y_predict_inverse, label="Predicted Price", color='red')
-    # plt.title('Bitcoin price prediction')
-    # plt.xlabel('Time [days]')
-    # plt.ylabel('Price')
-    # plt.legend(loc='best')
-    # plt.show()
+        except FileNotFoundError:
+            """
+            If the trained state cannot be loaded from file, generate
+            it.
+            """
+            history = self.model.fit(
+                x = self.X_train,
+                y = self.y_train,
+                epochs = self.epochs,
+                batch_size = self.batch_size,
+                shuffle = False,    # No shuffle for Time Series.
+                validation_split = 0.1
+            )
+            
+            val_loss = history.history['val_loss']
+            loss = history.history['loss']
+            np.save(
+                file = self.state_fname,
+                arr = np.array(self.model.get_weights()), allow_pickle = True
+            )
+            np.save(file = "saved_state/val_loss.npy", arr = val_loss)
+            np.save(file = "saved_state/loss.npy", arr = loss)
+            print(f"State saved to file '{self.state_fname}''.")
 
 
-    # y_predict = model.predict(scaled_price)
-    # y_test_inverse = scaler.inverse_transform(y_test)
-    # y_predict_inverse = scaler.inverse_transform(y_predict)
+    def plot(self):
+        # plt.plot(loss, label="train")
+        # plt.plot(val_loss, label="test")
+        # plt.title('model loss')
+        # plt.ylabel('loss')
+        # plt.xlabel('epoch')
+        # plt.legend(loc='upper left')
+        # plt.show()
 
-    # plt.plot(y_test_inverse, label="Actual Price", color='green')
-    # plt.plot(y_predict_inverse, label="Predicted Price", color='red')
-    # plt.title('Bitcoin price prediction')
-    # plt.xlabel('Time [days]')
-    # plt.ylabel('Price')
-    # plt.legend(loc='best')
-    # plt.show()
+        y_predict = self.model.predict(self.X_test)
+        y_test_inverse = self.scaler.inverse_transform(self.y_test)
+        y_predict_inverse = self.scaler.inverse_transform(y_predict)
+
+        plt.plot(y_test_inverse, label="Actual Price", color='green')
+        plt.plot(y_predict_inverse, label="Predicted Price", color='red')
+        plt.title('Bitcoin price prediction')
+        plt.xlabel('Time [days]')
+        plt.ylabel('Price')
+        plt.legend(loc='best')
+        plt.show()
+
+
+        # # y_predict = self.model.predict(self.scaled_price)
+        # y_test = self.scaler.inverse_transform(self.y_test)
+        # y_train = self.scaler.inverse_transform(self.y_train)
+        # # y_predict = self.scaler.inverse_transform(y_predict)
+
+        # plt.plot(self.price, label="price")
+        # plt.plot(y_test, label="y_test")
+        # plt.plot(y_train, label="y_train")
+        # plt.plot(np.concatenate((y_train, y_test)), label="conc")
+        # # plt.plot(y_predict, label="Predicted Price", color='red')
+        # plt.title('Bitcoin price prediction')
+        # plt.xlabel('Time [days]')
+        # plt.ylabel('Price')
+        # plt.legend(loc='best')
+        # plt.show()
     
 
 if __name__ == "__main__":
-    lstm()
+    q = CryptoPrediction()
+    q.train_model()
+    q.plot()
