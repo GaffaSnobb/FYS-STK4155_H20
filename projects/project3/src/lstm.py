@@ -2,7 +2,6 @@ import sys
 import time
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
@@ -70,8 +69,8 @@ class CryptoPrediction:
             train_size = 0.95,
             dropout = 0.2,
             batch_size = 64,
-            epochs = 50,
-            data_start = 0,
+            epochs = 20,
+            data_start = 1500,
             neurons = 50
         ):
         """
@@ -117,7 +116,11 @@ class CryptoPrediction:
         self.state_fname += f"_{batch_size=}"
         self.state_fname += f"_{epochs=}"
         self.state_fname += f"_{data_start=}"
-        self.state_fname += f"_{neurons=}.npy"
+        self.state_fname += f"_{neurons=}"
+
+        self.val_loss_fname = self.state_fname + "_val_loss.npy"
+        self.loss_fname = self.state_fname + "_loss.npy"
+        self.state_fname += ".npy"
 
 
     def _initial_state(self, csv_path = "data/btc-usd-max.csv"):
@@ -153,7 +156,7 @@ class CryptoPrediction:
 
     def create_model(self,
             hidden_activation = "tanh",
-            loss_function = "mean_squared_error"
+            loss_function = "mean_squared_error",
         ):
         """
         Set up the model.  Create layers.
@@ -238,9 +241,9 @@ class CryptoPrediction:
                 file = self.state_fname,
                 allow_pickle = True
                 ))
-            val_loss = np.load(file = "saved_state/val_loss.npy")
-            loss = np.load(file = "saved_state/loss.npy")
-            print(f"State loaded from file '{self.state_fname}''.")
+            self.val_loss = np.load(file = self.val_loss_fname)
+            self.loss = np.load(file = self.loss_fname)
+            print(f"State loaded from file '{self.state_fname}'.")
         
         except FileNotFoundError:
             """
@@ -256,57 +259,14 @@ class CryptoPrediction:
                 validation_split = 0.1
             )
             
-            val_loss = history.history['val_loss']
-            loss = history.history['loss']
+            self.val_loss = history.history['val_loss']
+            self.loss = history.history['loss']
             np.save(
                 file = self.state_fname,
-                arr = np.array(self.model.get_weights()), allow_pickle = True
+                arr = np.array(self.model.get_weights()),
+                allow_pickle = True
             )
-            np.save(file = "saved_state/val_loss.npy", arr = val_loss)
-            np.save(file = "saved_state/loss.npy", arr = loss)
-            print(f"State saved to file '{self.state_fname}''.")
-
-
-    def plot(self):
-        # plt.plot(loss, label="train")
-        # plt.plot(val_loss, label="test")
-        # plt.title('model loss')
-        # plt.ylabel('loss')
-        # plt.xlabel('epoch')
-        # plt.legend(loc='upper left')
-        # plt.show()
-
-        y_predict = self.model.predict(self.X_test)
-        y_test_inverse = self.scaler.inverse_transform(self.y_test)
-        y_predict_inverse = self.scaler.inverse_transform(y_predict)
-
-        plt.plot(y_test_inverse, label="Actual Price", color='green')
-        plt.plot(y_predict_inverse, label="Predicted Price", color='red')
-        plt.title('Bitcoin price prediction')
-        plt.xlabel('Time [days]')
-        plt.ylabel('Price')
-        plt.legend(loc='best')
-        plt.show()
-
-
-        # # y_predict = self.model.predict(self.scaled_price)
-        # y_test = self.scaler.inverse_transform(self.y_test)
-        # y_train = self.scaler.inverse_transform(self.y_train)
-        # # y_predict = self.scaler.inverse_transform(y_predict)
-
-        # plt.plot(self.price, label="price")
-        # plt.plot(y_test, label="y_test")
-        # plt.plot(y_train, label="y_train")
-        # plt.plot(np.concatenate((y_train, y_test)), label="conc")
-        # # plt.plot(y_predict, label="Predicted Price", color='red')
-        # plt.title('Bitcoin price prediction')
-        # plt.xlabel('Time [days]')
-        # plt.ylabel('Price')
-        # plt.legend(loc='best')
-        # plt.show()
+            np.save(file = self.val_loss_fname, arr = self.val_loss)
+            np.save(file = self.loss_fname, arr = self.loss)
+            print(f"State saved to file '{self.state_fname}'.")
     
-
-if __name__ == "__main__":
-    q = CryptoPrediction()
-    q.train_model()
-    q.plot()
