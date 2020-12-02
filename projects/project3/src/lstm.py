@@ -72,7 +72,8 @@ class CryptoPrediction:
             epochs = 20,
             data_start = 1500,
             neurons = 50,
-            csv_path = "data/btc-usd-max.csv"
+            csv_path = "data/btc-usd-max.csv",
+            directory = ""
         ):
         """
         Parameters
@@ -114,7 +115,8 @@ class CryptoPrediction:
         self.window_size = window_size
         self.csv_path = csv_path
 
-        self.state_fname = f"saved_state/{seq_len=}"
+        self.state_fname = f"saved_state/" + directory
+        self.state_fname += f"{seq_len=}"
         self.state_fname += f"_{train_size=}"
         self.state_fname += f"_{window_size=}"
         self.state_fname += f"_{dropout=}"
@@ -199,10 +201,15 @@ class CryptoPrediction:
         )
 
     
-    def train_model(self):
+    def train_model(self, n_repetitions = 1):
         """
         Train the model.  If state data is already saved, no training
         will be performed.
+
+        Parameters
+        ----------
+        n_repetitions : int
+            Repeat the calculations and average.
         """
         self.create_model()
         try:
@@ -214,7 +221,7 @@ class CryptoPrediction:
                 Input handling for cml argument. Try to index
                 sys.argv[1]. 
                 """
-                if sys.argv[1] and os.path.isfile(self.state_fname):
+                if (sys.argv[1] == 1) and os.path.isfile(self.state_fname):
                     """
                     If sys.arv[1] is true, and file exists, prompt to
                     overwrite saved state.
@@ -250,20 +257,31 @@ class CryptoPrediction:
             If the trained state cannot be loaded from file, generate
             it.
             """
-            history = self.model.fit(
-                x = self.X_train,
-                y = self.y_train,
-                epochs = self.epochs,
-                batch_size = self.batch_size,
-                shuffle = False,    # No shuffle for Time Series.
-                validation_split = 0.1
-            )
+            self.val_loss = np.zeros(self.epochs)
+            self.loss = np.zeros(self.epochs)
+
+            for rep in range(n_repetitions):
+                self.create_model()
+                history = self.model.fit(
+                    x = self.X_train,
+                    y = self.y_train,
+                    epochs = self.epochs,
+                    batch_size = self.batch_size,
+                    shuffle = False,    # No shuffle for Time Series.
+                    validation_split = 0.1
+                )
+
+                self.val_loss += history.history['val_loss']
+                self.loss += history.history['loss']
+
+            self.val_loss /= n_repetitions
+            self.loss /= n_repetitions
             
-            self.val_loss = history.history['val_loss']
-            self.loss = history.history['loss']
+            self.weights = np.array(self.model.get_weights())
+
             np.save(
                 file = self.state_fname,
-                arr = np.array(self.model.get_weights()),
+                arr = self.weights,
                 allow_pickle = True
             )
             np.save(file = self.val_loss_fname, arr = self.val_loss)
