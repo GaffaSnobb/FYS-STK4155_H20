@@ -71,7 +71,8 @@ class CryptoPrediction:
             batch_size = 64,
             epochs = 20,
             data_start = 1500,
-            neurons = 50
+            neurons = 50,
+            csv_path = "data/btc-usd-max.csv"
         ):
         """
         Parameters
@@ -98,6 +99,9 @@ class CryptoPrediction:
 
         neurons : int
             The number of neurons in each layer.
+
+        csv_path : str
+            Path to crypto price data in csv format.
         """
         self.seq_len = seq_len
         self.train_size = train_size
@@ -108,6 +112,7 @@ class CryptoPrediction:
         self.neurons = neurons
         window_size = self.seq_len - 1
         self.window_size = window_size
+        self.csv_path = csv_path
 
         self.state_fname = f"saved_state/{seq_len=}"
         self.state_fname += f"_{train_size=}"
@@ -123,18 +128,13 @@ class CryptoPrediction:
         self.state_fname += ".npy"
 
 
-    def _initial_state(self, csv_path = "data/btc-usd-max.csv"):
+    def _initial_state(self):
         """
         Set up the initial state of the data.  Read data from csv.  Sort
         dataframe and reshape price array to column vector.  Scale the
         data.  Split into train and test sets.
-
-        Parameters
-        ----------
-        csv_path : str
-            Path to csv file.
         """
-        df = pd.read_csv(csv_path, parse_dates=['snapped_at'])
+        df = pd.read_csv(self.csv_path, parse_dates=['snapped_at'])
         df = df.sort_values('snapped_at')   # Sort by date.
         self.price = df.price.values.reshape(-1, 1)  # Reshape to fit the scaler.
         self.price = self.price[self.data_start:] # Slice dataset.
