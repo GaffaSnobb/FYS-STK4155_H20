@@ -8,6 +8,18 @@ ray.init()
 
 @ray.remote
 def parallel_dropout_rates(dropout_rate, n_repetitions):
+    """
+    Set up a LSTM network and train.  This function exists to be
+    parallelized with ray.
+
+    Parameters
+    ----------
+    dropout_rate : float
+        Fraction of nodes to exclude.  Must be [0, 1].
+
+    n_repetitions : int
+        The number of times to repeat the experiment.
+    """
     q = CryptoPrediction(
         seq_len = 100,
         train_size = 0.95,
@@ -44,7 +56,7 @@ def plot_dropout_rates():
     n_dropout_rates = len(dropout_rates)
     n_repetitions = 5
 
-    mse_90 = np.zeros(n_dropout_rates)  # MSE at 50 epochs.
+    mse_90 = np.zeros(n_dropout_rates)  # MSE at 90 epochs.
     mse_60 = np.zeros(n_dropout_rates)
     mse_30 = np.zeros(n_dropout_rates)
 
@@ -64,7 +76,7 @@ def plot_dropout_rates():
         Execute parallel work.
         """
         if ((i%2) == 0):
-            ax0.plot(res, label = f"dropout rate: {dropout_rates[i]}")
+            ax0.semilogy(res, label = f"dropout rate: {dropout_rates[i]}")
         
         mse_90[i] = res[90 - 1]
         mse_60[i] = res[60 - 1]
@@ -110,7 +122,7 @@ def plot_dropout_rates():
     ax1.xaxis.set_ticklabels([f"{x:.1f}" for x in [0, *dropout_rates]])
     ax1.legend(fontsize = 15)
 
-    fig1.savefig(fname = "../fig/analyse_dropout_final_mse.png", dpi = 300)
+    fig1.savefig(fname = "../fig/analyse_dropout_bar_chart.png", dpi = 300)
     plt.show()
 
 
