@@ -38,9 +38,9 @@ def plot_price():
 
     fig, ax = plt.subplots(figsize = (9, 7))
 
-    ax.plot(Y_predicted[:, 0], label = f"{dropout_rates[0]=}", color = "black", linestyle = "dashed")
-    ax.plot(Y_predicted[:, 2], label = f"{dropout_rates[2]=}", color = "black", linestyle = "dotted")
-    ax.plot(Y_predicted[:, 4], label = f"{dropout_rates[4]=}", color = "black", linestyle = "solid")
+    ax.plot(Y_predicted[:, 0], label = f"Dropout rate: {dropout_rates[0]}", color = "black", linestyle = "dashed")
+    ax.plot(Y_predicted[:, 2], label = f"Dropout rate: {dropout_rates[2]}", color = "black", linestyle = "dotted")
+    ax.plot(Y_predicted[:, 4], label = f"Dropout rate: {dropout_rates[4]}", color = "black", linestyle = "solid")
     ax.plot(y_test, label = f"Actual", color = "grey")
     ax.set_title('BTC prediction', fontsize = 15)
     ax.set_xlabel('Time, [days]', fontsize = 15)
@@ -48,6 +48,7 @@ def plot_price():
     ax.legend(loc='best', fontsize = 15)
     ax.grid()
     ax.tick_params(labelsize = 15)
+    fig.savefig(fname = "../fig/analyse_dropout_price_comparison.png", dpi = 300)
     plt.show()
 
 
