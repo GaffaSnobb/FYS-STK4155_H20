@@ -35,13 +35,13 @@ def to_sequences(data, seq_len):
     # return d
 
 
-def train_test_split(data_raw, seq_len, train_size):
+def train_test_split(raw_data, seq_len, train_size):
     """
     From https://towardsdatascience.com/cryptocurrency-price-prediction-using-lstms-tensorflow-for-hackers-part-iii-264fcdbccd3f.
 
     Parameters
     ----------
-    data_raw : numpy.ndarray
+    raw_data : numpy.ndarray
         Scaled price data as column vector.
 
     seq_len : int
@@ -51,7 +51,7 @@ def train_test_split(data_raw, seq_len, train_size):
         Should be between 0.0 and 1.0 and represent the proportion of
         the dataset to include in the train split.
     """
-    data = to_sequences(data_raw, seq_len)
+    data = to_sequences(raw_data, seq_len)
     num_train = int(train_size*data.shape[0])  # Number of training data.
 
     X_test = data[num_train:, :-1, :]
@@ -146,11 +146,8 @@ class CryptoPrediction:
         self.scaled_price = self.scaled_price[~np.isnan(self.scaled_price)] # Remove all NaNs.
         self.scaled_price = self.scaled_price.reshape(-1, 1)    # Reshape to column.
 
-        train_test_split_time = time.time()
         self.X_train, self.y_train, self.X_test, self.y_test =\
             train_test_split(self.scaled_price, self.seq_len, self.train_size)
-        train_test_split_time = time.time() - train_test_split_time
-        print(f"{train_test_split_time = }")
 
         # plt.plot(np.arange(len(df.price.values)), df.price.values)
         # plt.show()
@@ -221,7 +218,7 @@ class CryptoPrediction:
                 Input handling for cml argument. Try to index
                 sys.argv[1]. 
                 """
-                if (sys.argv[1] == 1) and os.path.isfile(self.state_fname):
+                if (sys.argv[1] == "overwrite") and os.path.isfile(self.state_fname):
                     """
                     If sys.arv[1] is true, and file exists, prompt to
                     overwrite saved state.
@@ -260,7 +257,7 @@ class CryptoPrediction:
             self.val_loss = np.zeros(self.epochs)
             self.loss = np.zeros(self.epochs)
 
-            for rep in range(n_repetitions):
+            for _ in range(n_repetitions):
                 self.create_model()
                 history = self.model.fit(
                     x = self.X_train,
