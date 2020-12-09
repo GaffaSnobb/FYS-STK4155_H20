@@ -52,5 +52,5 @@ def plot_price():
 
 
 if __name__ == "__main__":
-    confidence()
+    plot_price()
     pass
