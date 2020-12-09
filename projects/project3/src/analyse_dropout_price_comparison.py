@@ -3,7 +3,7 @@ import numpy as np
 from lstm import CryptoPrediction
 
 
-def confidence():
+def plot_price():
     dropout_rates = [0, 0.2, 0.4, 0.6, 0.8]
     n_dropout_rates = len(dropout_rates)
     n_repetitions = 1
