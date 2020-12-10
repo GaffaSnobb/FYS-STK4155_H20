@@ -125,7 +125,7 @@ def stuff():
     fig3, ax3 = plt.subplots(figsize = (9, 7))
 
     for i in range(mse.shape[3]):
-        ax3.plot(epochs, mse[drop_min, seq_min, bat_min, i, :], label = f"Neurons: {batch_sizes[i]}")
+        ax3.plot(epochs, mse[drop_min, seq_min, bat_min, i, :], label = f"Neurons: {neurons[i]}")
 
     ax3.set_xlabel("Epochs", fontsize = 15)
     ax3.set_ylabel("MSE", fontsize = 15)
