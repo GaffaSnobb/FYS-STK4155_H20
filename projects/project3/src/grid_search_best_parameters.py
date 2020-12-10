@@ -46,7 +46,7 @@ def stuff():
     neurons = np.arange(10, 100, 20)
     n_neurons = len(neurons)
 
-    mse = np.zeros((n_dropout_rates, n_seq_lengths, n_batch_sizes, n_epochs), dtype = float)
+    mse = np.zeros((n_dropout_rates, n_seq_lengths, n_batch_sizes, n_neurons, n_epochs), dtype = float)
 
     parallel_results = []
     for drop in range(n_dropout_rates):
