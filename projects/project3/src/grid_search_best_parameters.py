@@ -36,13 +36,15 @@ def run_network(seq_len, dropout_rate, batch_size, epochs, neurons):
 def stuff():
     dropout_rates = [0, 0.2, 0.4, 0.6, 0.8]
     n_dropout_rates = len(dropout_rates)
-    seq_lengths = np.arange(25, 100, 15)
+    seq_lengths = np.arange(10, 100 + 1, 30)
     n_seq_lengths = len(seq_lengths)
     n_repetitions = 1
-    n_epochs = 10
+    n_epochs = 90
     epochs = np.arange(1, n_epochs + 1, 1)
-    batch_sizes = [2**x for x in range(2, 6+1)]
+    batch_sizes = [2**x for x in range(2, 8 + 1, 2)]
     n_batch_sizes = len(batch_sizes)
+    neurons = np.arange(10, 100, 20)
+    n_neurons = len(neurons)
 
     mse = np.zeros((n_dropout_rates, n_seq_lengths, n_batch_sizes, n_epochs), dtype = float)
 
@@ -50,35 +52,38 @@ def stuff():
     for drop in range(n_dropout_rates):
         for seq in range(n_seq_lengths):
             for bat in range(n_batch_sizes):
-                """
-                Generate processes.  Loop over dropout rates.
-                """
-                parallel_results.append(run_network.remote(
-                    seq_len = seq_lengths[seq],
-                    dropout_rate = dropout_rates[drop],
-                    batch_size = batch_sizes[bat],
-                    epochs = n_epochs,
-                    neurons = 50
-                ))
+                for neu in range(n_neurons):
+                    """
+                    Generate processes.  Loop over dropout rates.
+                    """
+                    parallel_results.append(run_network.remote(
+                        seq_len = seq_lengths[seq],
+                        dropout_rate = dropout_rates[drop],
+                        batch_size = batch_sizes[bat],
+                        epochs = n_epochs,
+                        neurons = n_neurons[neu]
+                    ))
 
     parallel_results = ray.get(parallel_results)
     idx = 0
     for drop in range(n_dropout_rates):
         for seq in range(n_seq_lengths):
             for bat in range(n_batch_sizes):
-                mse[drop, seq, bat] = parallel_results[idx]
-                idx += 1
+                for neu in range(n_neurons):
+                    mse[drop, seq, bat, neu] = parallel_results[idx]
+                    idx += 1
 
-    drop_min, seq_min, bat_min, epoc_min = np.unravel_index(mse.argmin(), mse.shape)
+    drop_min, seq_min, bat_min, epoc_min, neu_min = np.unravel_index(mse.argmin(), mse.shape)
     print(f"min dropout: {dropout_rates[drop_min]}")
     print(f"min seq len: {seq_lengths[seq_min]}")
     print(f"min batch size: {batch_sizes[bat_min]}")
     print(f"min epoch: {np.arange(1, n_epochs+1)[epoc_min]}")
+    print(f"min neuron: {neurons[neu_min]}")
 
     fig0, ax0 = plt.subplots(figsize = (9, 7))
 
     for i in range(mse.shape[0]):
-        ax0.plot(epochs, mse[i, seq_min, bat_min, :], label = f"{dropout_rates[i]=}")
+        ax0.plot(epochs, mse[i, seq_min, bat_min, neu_min, :], label = f"Dropout rate: {dropout_rates[i]}")
 
     ax0.set_xlabel("Epochs", fontsize = 15)
     ax0.set_ylabel("MSE", fontsize = 15)
@@ -92,7 +97,7 @@ def stuff():
     fig1, ax1 = plt.subplots(figsize = (9, 7))
 
     for i in range(mse.shape[1]):
-        ax1.plot(epochs, mse[drop_min, i, bat_min, :], label = f"{seq_lengths[i]=}")
+        ax1.plot(epochs, mse[drop_min, i, bat_min, neu_min, :], label = f"Seq. length: {seq_lengths[i]}")
 
     ax1.set_xlabel("Epochs", fontsize = 15)
     ax1.set_ylabel("MSE", fontsize = 15)
@@ -106,7 +111,7 @@ def stuff():
     fig2, ax2 = plt.subplots(figsize = (9, 7))
 
     for i in range(mse.shape[2]):
-        ax2.plot(epochs, mse[drop_min, seq_min, i, :], label = f"{batch_sizes[i]=}")
+        ax2.plot(epochs, mse[drop_min, seq_min, i, neu_min, :], label = f"Batch size: {batch_sizes[i]}")
 
     ax2.set_xlabel("Epochs", fontsize = 15)
     ax2.set_ylabel("MSE", fontsize = 15)
@@ -114,6 +119,20 @@ def stuff():
     ax2.tick_params(labelsize = 15)
     ax2.grid()
     fig2.savefig(fname = "../fig/best_parameters_batch_sizes.png", dpi = 300)
+    # plt.show()
+
+
+    fig3, ax3 = plt.subplots(figsize = (9, 7))
+
+    for i in range(mse.shape[3]):
+        ax3.plot(epochs, mse[drop_min, seq_min, bat_min, i, :], label = f"Neurons: {batch_sizes[i]}")
+
+    ax3.set_xlabel("Epochs", fontsize = 15)
+    ax3.set_ylabel("MSE", fontsize = 15)
+    ax3.legend(fontsize = 15)
+    ax3.tick_params(labelsize = 15)
+    ax3.grid()
+    fig3.savefig(fname = "../fig/best_parameters_neurons.png", dpi = 300)
     # plt.show()
 
 
