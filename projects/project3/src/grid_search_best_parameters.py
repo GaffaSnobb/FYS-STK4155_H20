@@ -61,7 +61,7 @@ def stuff():
                         dropout_rate = dropout_rates[drop],
                         batch_size = batch_sizes[bat],
                         epochs = n_epochs,
-                        neurons = n_neurons[neu]
+                        neurons = neurons[neu]
                     ))
 
     parallel_results = ray.get(parallel_results)
