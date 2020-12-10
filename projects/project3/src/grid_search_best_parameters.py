@@ -73,7 +73,7 @@ def stuff():
                     mse[drop, seq, bat, neu] = parallel_results[idx]
                     idx += 1
 
-    drop_min, seq_min, bat_min, epoc_min, neu_min = np.unravel_index(mse.argmin(), mse.shape)
+    drop_min, seq_min, bat_min, neu_min, epoc_min = np.unravel_index(mse.argmin(), mse.shape)
     print(f"min dropout: {dropout_rates[drop_min]}")
     print(f"min seq len: {seq_lengths[seq_min]}")
     print(f"min batch size: {batch_sizes[bat_min]}")
