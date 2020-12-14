@@ -147,10 +147,11 @@ class CryptoPrediction:
         self.scaled_price = self.scaled_price.reshape(-1, 1)    # Reshape to column.
 
         self.X_train, self.y_train, self.X_test, self.y_test =\
-            train_test_split(self.scaled_price, self.seq_len, self.train_size)
-
-        # plt.plot(np.arange(len(df.price.values)), df.price.values)
-        # plt.show()
+            train_test_split(
+                raw_data = self.scaled_price,
+                seq_len = self.seq_len,
+                train_size = self.train_size
+            )
 
 
     def create_model(self,
