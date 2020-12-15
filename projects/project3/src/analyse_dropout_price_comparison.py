@@ -59,39 +59,50 @@ def plot_price():
 
 def plot_price_v2():
 
-    dropout_rates = [0, 0.2, 0.4, 0.6, 0.8]
+    # dropout_rates = [0, 0.2, 0.4, 0.6, 0.8]
+    dropout_rates = [0, 0.4, 0.8]
     n_dropout_rates = len(dropout_rates)
-    how_many = 100
-    n_predictions = 10
-    scope = np.arange(how_many)
+    predict_seq_len = 100
+    n_predictions = 5
+    prediction_shift = 50
+    scope = np.arange(predict_seq_len)
 
-    for i in range(n_dropout_rates):
+    fig, ax = plt.subplots(
+        nrows = 2,
+        ncols = 2,
+        figsize = (9, 7)
+    )
 
-        q = CryptoPrediction(
-            seq_len = 100,
-            train_size = 0.95,
-            dropout = dropout_rates[i],
-            batch_size = 64,
-            epochs = 90,
-            data_start = 1500,
-            neurons = 50,
-            csv_path = "data/btc-usd-max.csv",
-            directory = "analyse_dropout/"
-        )
-        q.train_model()
+    ax = ax.ravel()
 
+    for j in range(4):
+        for i in range(n_dropout_rates):
+
+            q = CryptoPrediction(
+                seq_len = 100,
+                train_size = 0.95,
+                dropout = dropout_rates[i],
+                batch_size = 64,
+                epochs = 90,
+                data_start = 1500,
+                neurons = 50,
+                csv_path = "data/btc-usd-max.csv",
+                directory = "analyse_dropout/"
+            )
+            q.train_model()
+            if i == 0: ax[j].plot(scope, q.scaled_price[-predict_seq_len:], label = "true")
+
+            scaled_price = list(q.scaled_price[-predict_seq_len - n_predictions - prediction_shift:-n_predictions - prediction_shift])
+            for _ in range(n_predictions):
+                sequence = to_sequences(scaled_price, predict_seq_len - 1)
+                prediction = q.model.predict(sequence).ravel()
+                scaled_price.append(prediction)
+                scaled_price.pop(0)
+
+            ax[j].plot(scope[-n_predictions - 1 - prediction_shift:-prediction_shift], scaled_price[-n_predictions - 1:], label = f"{dropout_rates[i]=}", linestyle = "dashed")
         
-        scaled_price = list(q.scaled_price[-how_many - n_predictions:-n_predictions])
-        for _ in range(n_predictions):
-            sequence = to_sequences(scaled_price, how_many - 1)
-            prediction = q.model.predict(sequence).ravel()
-            scaled_price.append(prediction)
-            scaled_price.pop(0)
-
-        plt.plot(scope[-n_predictions - 1:], scaled_price[-n_predictions - 1:], label = f"{dropout_rates[i]=}", linestyle = "dashed")
+        ax[j].legend()
     
-    plt.plot(scope, q.scaled_price[-how_many:], label = "true")
-    plt.legend()
     plt.show()
 
 
