@@ -58,13 +58,15 @@ def plot_price():
 
 
 def plot_price_v2():
-
-    # dropout_rates = [0, 0.2, 0.4, 0.6, 0.8]
+    """
+    Plot true price with predictions at different temporal locations.
+    """
     dropout_rates = [0, 0.4, 0.8]
     n_dropout_rates = len(dropout_rates)
     predict_seq_len = 100
     n_predictions = 5
-    prediction_shift = 50
+    prediction_shifts = [80, 50, 20, 1]
+    n_prediction_shifts = len(prediction_shifts)
     scope = np.arange(predict_seq_len)
 
     fig, ax = plt.subplots(
@@ -74,10 +76,28 @@ def plot_price_v2():
     )
 
     ax = ax.ravel()
+    # Limits for the ax insets.
+    xlims = [[11, 21], [41, 51], [71, 81], [90, 100]]
+    ylims = [[0.4, 0.6], [0.42, 0.62], [0.62, 0.82], [0.8, 1]]
 
-    for j in range(4):
+    for j in range(n_prediction_shifts):
+        """
+        Loop over different start points of the price predictions.
+        """
+        axins = ax[j].inset_axes([0.04, 0.43, 0.56, 0.56])
+        axins.set_xticklabels([])
+        axins.set_yticklabels([])
+        axins.set_xlim(xlims[j])
+        axins.set_ylim(ylims[j])
+        ax[j].indicate_inset_zoom(axins)
+        ax[j].tick_params(labelsize = 15)
+        # ax[j].legend()
+        # ax[j].set_xlim(xlims[j])
+        # ax[j].set_ylim(ylims[j])
         for i in range(n_dropout_rates):
-
+            """
+            Loop over dropout rates.
+            """
             q = CryptoPrediction(
                 seq_len = 100,
                 train_size = 0.95,
@@ -90,19 +110,53 @@ def plot_price_v2():
                 directory = "analyse_dropout/"
             )
             q.train_model()
-            if i == 0: ax[j].plot(scope, q.scaled_price[-predict_seq_len:], label = "true")
+            if i == 0:
+                """
+                Plot the true price only once per subplot.
+                """
+                ax[j].plot(
+                    scope,
+                    q.scaled_price[-predict_seq_len:],
+                    label = "Price",
+                    color = "black"
+                )
+                axins.plot(
+                    scope,
+                    q.scaled_price[-predict_seq_len:],
+                    color = "black"
+                )
 
-            scaled_price = list(q.scaled_price[-predict_seq_len - n_predictions - prediction_shift:-n_predictions - prediction_shift])
+            scaled_price = list(q.scaled_price[-predict_seq_len - n_predictions - prediction_shifts[j]:-n_predictions - prediction_shifts[j]])
             for _ in range(n_predictions):
-                sequence = to_sequences(scaled_price, predict_seq_len - 1)
-                prediction = q.model.predict(sequence).ravel()
+                """
+                Predict 'n_predictions' steps in the future.
+                """
+                sequence = to_sequences(scaled_price, predict_seq_len - 1)  # Prepare data for the network, [batch_size, sequence_length, n_features].
+                prediction = q.model.predict(sequence).ravel()  # A single prediction.
                 scaled_price.append(prediction)
-                scaled_price.pop(0)
+                scaled_price.pop(0) # Remove the first data point to keep the total number of data points.
 
-            ax[j].plot(scope[-n_predictions - 1 - prediction_shift:-prediction_shift], scaled_price[-n_predictions - 1:], label = f"{dropout_rates[i]=}", linestyle = "dashed")
-        
-        ax[j].legend()
-    
+            ax[j].plot(
+                scope[-n_predictions - prediction_shifts[j] - 1:-prediction_shifts[j]],
+                scaled_price[-n_predictions - 1:],
+                label = f"Dropout: {dropout_rates[i]}",
+                linestyle = "dashed"
+            )
+            axins.plot(
+                scope[-n_predictions - prediction_shifts[j] - 1:-prediction_shifts[j]],
+                scaled_price[-n_predictions - 1:],
+                linestyle = "dashed"
+            )
+
+    # Remove surplus ax labels.
+    ax[0].set_xticklabels([])
+    ax[1].set_xticklabels([])
+    ax[1].set_yticklabels([])
+    ax[3].set_yticklabels([])
+    fig.text(s = "Days", fontsize = 15, x = 0.49, y = 0.02)
+    fig.text(s = "BTC price", fontsize = 15, x = 0, y = 0.48, rotation = 90)
+    fig.tight_layout(pad = 2)
+    fig.savefig(fname = "../fig/price_predictions.png", dpi = 300)
     plt.show()
 
 
