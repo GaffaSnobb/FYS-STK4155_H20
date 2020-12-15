@@ -33,7 +33,7 @@ def run_network(seq_len, dropout_rate, batch_size, epochs, neurons):
     return q.val_loss
 
 
-def stuff():
+def grid_search():
     dropout_rates = [0, 0.2, 0.4, 0.6, 0.8]
     n_dropout_rates = len(dropout_rates)
     seq_lengths = np.arange(10, 100 + 1, 30)
@@ -136,6 +136,43 @@ def stuff():
     # plt.show()
 
 
+    fig4, ax4 = plt.subplots(figsize = (9, 7))
+    ax4.plot(seq_lengths, mse[drop_min, :, bat_min, neu_min, -1])
+    ax4.set_xlabel("Seq. length", fontsize = 15)
+    ax4.set_ylabel("MSE", fontsize = 15)
+    ax4.legend(fontsize = 15)
+    ax4.tick_params(labelsize = 15)
+    ax4.grid()
+    fig4.savefig(fname = "../fig/best_parameters_mse_vs_seq_lengths.png", dpi = 300)
+    # plt.show()
+
+
+def vary_sequence_lengths():
+    # sequence_lengths = np.arange(10, 100+1, 10)
+    sequence_lengths = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+    n_sequence_lengths = len(sequence_lengths)
+    n_epochs = 90
+
+    mse = np.empty((n_sequence_lengths, n_epochs))
+
+    parallel_results = []
+    for i in range(n_sequence_lengths):
+        parallel_results.append(run_network.remote(
+            seq_len = sequence_lengths[i],
+            dropout_rate = 0,
+            batch_size = 4,
+            epochs = n_epochs,
+            neurons = 70
+        ))
+
+    parallel_results = ray.get(parallel_results)
+    for i in range(n_sequence_lengths):
+        mse[i] = parallel_results[i]
+
+    plt.plot(sequence_lengths, mse[:, -1])
+    # plt.show()
 
 if __name__ == "__main__":
-    stuff()
+    # grid_search()
+    vary_sequence_lengths()
+    pass
