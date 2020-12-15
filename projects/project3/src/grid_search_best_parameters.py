@@ -148,8 +148,8 @@ def grid_search():
 
 
 def vary_sequence_lengths():
-    # sequence_lengths = np.arange(10, 100+1, 10)
-    sequence_lengths = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+    sequence_lengths = np.arange(10, 100+1, 5)
+    # sequence_lengths = [10, 20, 30, 40, 50, 60, 70, 80, 90]
     n_sequence_lengths = len(sequence_lengths)
     n_epochs = 90
 
