@@ -4,6 +4,8 @@ Parameters for each part of the project is located in an individual .py file in 
 
 The runtime is very long for most of the programs, but lucky for you ```lstm.py``` saves the network state as ```.npy``` files. The network checks whether the save state for the given parameters already exists and loads the save state should it exist (we have uploaded all save states so you dont have to calculate them). All save state files are located in ```src/saved_state```.
 
+The bitcoin price data is located in ```src/data/btc-usd-max.csv```.
+
 ### Parallelization
 Most of the code is parallelized using ```ray```. It is tested to work fine on the latest Ubuntu and macOS.
 
