@@ -210,5 +210,5 @@ def vary_sequence_lengths():
 
 if __name__ == "__main__":
     grid_search()
-    # vary_sequence_lengths()
+    vary_sequence_lengths()
     pass
