@@ -25,14 +25,9 @@ def to_sequences(data, seq_len):
     """
     d = []
     N = len(data) - seq_len
-    # d = np.zeros(shape = N, dtype = np.ndarray)
-
-    for i in range(N):
-        # d[i] = data[i:i + seq_len]
-        d.append(data[i: i + seq_len])
+    for i in range(N): d.append(data[i: i + seq_len])
 
     return np.array(d)
-    # return d
 
 
 def train_test_split(raw_data, seq_len, train_size):
@@ -104,6 +99,9 @@ class CryptoPrediction:
 
         csv_path : str
             Path to crypto price data in csv format.
+
+        directory : str
+            Directory for saving the system state.
         """
         self.seq_len = seq_len
         self.train_size = train_size
@@ -150,10 +148,11 @@ class CryptoPrediction:
         self.scaled_price = self.scaled_price.reshape(-1, 1)    # Reshape to column.
 
         self.X_train, self.y_train, self.X_test, self.y_test =\
-            train_test_split(self.scaled_price, self.seq_len, self.train_size)
-
-        # plt.plot(np.arange(len(df.price.values)), df.price.values)
-        # plt.show()
+            train_test_split(
+                raw_data = self.scaled_price,
+                seq_len = self.seq_len,
+                train_size = self.train_size
+            )
 
 
     def create_model(self,
