@@ -207,7 +207,8 @@ def vary_sequence_lengths():
     fig.savefig(fname = "../fig/vary_seq_length.png", dpi = 300)
     plt.show()
 
+
 if __name__ == "__main__":
-    # grid_search()
-    vary_sequence_lengths()
+    grid_search()
+    # vary_sequence_lengths()
     pass
