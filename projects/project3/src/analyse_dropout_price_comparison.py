@@ -11,7 +11,7 @@ def plot_price_predictions(debug = True):
     n_dropout_rates = len(dropout_rates)
     predict_seq_len = 100
     n_predictions = 5   # Amount of days to predict.
-    prediction_shifts = [80, 50, 20, 1] # Location of where to start prediction.
+    prediction_shifts = [80, 50, 20, 1] # Shift value of where to start prediction.
     n_prediction_shifts = len(prediction_shifts)
     scope = np.arange(predict_seq_len)
 
@@ -69,6 +69,10 @@ def plot_price_predictions(debug = True):
                 )
 
                 if debug:
+                    """
+                    Plot red dots for the places where the price
+                    comparison takes place.
+                    """
                     scope_tmp = scope[-n_predictions - prediction_shifts[j] - 1:-prediction_shifts[j]]
                     axins.plot(
                         scope_tmp[1],
@@ -118,6 +122,10 @@ def plot_price_predictions(debug = True):
                 linestyle = "dashed"
             )
             if debug:
+                """
+                Plot red dots for the places where the price
+                comparison takes place.
+                """
                 scope_tmp = scope[-n_predictions - prediction_shifts[j] - 1:-prediction_shifts[j]]
                 axins.plot(
                     scope_tmp[1],
@@ -134,6 +142,7 @@ def plot_price_predictions(debug = True):
                     scaled_price[-1],
                     "r."
                 )
+            
             axins.plot(
                 scope[-n_predictions - prediction_shifts[j] - 1:-prediction_shifts[j]],
                 scaled_price[-n_predictions - 1:],
