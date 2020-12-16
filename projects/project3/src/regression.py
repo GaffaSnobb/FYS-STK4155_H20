@@ -66,8 +66,10 @@ def fit_all_price_data():
     """
     csv_path = "data/btc-usd-max.csv"
     n_data_total = 2774
+    polynomial_degrees = [10, 15, 20]
+    linestyles = ["dotted", "dashed", "solid"]
+    n_polynomial_degrees = len(polynomial_degrees)
     x = np.linspace(0, 1, n_data_total)
-    X = create_design_matrix_one_dependent_variable(x, n_data_total, 20)
 
     df = pd.read_csv(csv_path, parse_dates=['snapped_at'])
     df = df.sort_values('snapped_at')   # Sort by date.
@@ -76,20 +78,27 @@ def fit_all_price_data():
     scaled_price = scaler.fit_transform(X = price)
     scaled_price = scaled_price[~np.isnan(scaled_price)] # Remove all NaNs.
     scaled_price = scaled_price.reshape(-1, 1)    # Reshape to column.
-
-    X_train, X_test, y_train, y_test = \
-        train_test_split(X, scaled_price, test_size = 0.2, shuffle = True)
-
-    reg = LinearRegression().fit(X_train, y_train)
-    y_predicted_test = np.sort(X_test, axis = 0)@reg.coef_.T
-
+    
     fig, ax = plt.subplots(figsize = (9, 7))
-    ax.plot(
-        np.sort(X_test[:, 1])*n_data_total,
-        scaler.inverse_transform(y_predicted_test),
-        label = "Prediction",
-        color = "black"
-    )
+    
+    for i in range(n_polynomial_degrees):
+        
+        X = create_design_matrix_one_dependent_variable(x, n_data_total, polynomial_degrees[i])
+
+        X_train, X_test, y_train, y_test = \
+            train_test_split(X, scaled_price, test_size = 0.2, shuffle = True)
+
+        reg = LinearRegression().fit(X_train, y_train)
+        y_predicted_test = np.sort(X_test, axis = 0)@reg.coef_.T
+
+        ax.plot(
+            np.sort(X_test[:, 1])*n_data_total,
+            scaler.inverse_transform(y_predicted_test),
+            label = f"Poly. deg.: {polynomial_degrees[i]}",
+            color = "black",
+            linestyle = linestyles[i]
+        )
+
     ax.plot(
         price,
         label = "Actual price",
