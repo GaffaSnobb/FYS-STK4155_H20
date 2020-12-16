@@ -130,23 +130,3 @@ def plot_dropout_rates():
 if __name__ == "__main__":
     plot_dropout_rates()
     pass
-
-
-
-
-    # # y_predict = q.model.predict(q.scaled_price)
-    # y_predict = q.model.predict(q.X_test)
-    # y_test = q.scaler.inverse_transform(q.y_test)
-    # y_train = q.scaler.inverse_transform(q.y_train)
-    # y_predict = q.scaler.inverse_transform(y_predict)
-
-    # # plt.plot(q.price, label="price")
-    # plt.plot(y_test, label="y_test")
-    # # plt.plot(y_train, label="y_train")
-    # # plt.plot(np.concatenate((y_train, y_test)), label="conc")
-    # plt.plot(y_predict, label="Predicted Price", color='red')
-    # plt.title('Bitcoin price prediction')
-    # plt.xlabel('Time [days]')
-    # plt.ylabel('Price')
-    # plt.legend(loc='best')
-    # plt.show()
