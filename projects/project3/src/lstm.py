@@ -72,6 +72,7 @@ class CryptoPrediction:
             epochs = 20,
             data_start = 1500,
             neurons = 50,
+            hidden_activation = "tanh",
             csv_path = "data/btc-usd-max.csv",
             directory = ""
         ):
@@ -114,6 +115,7 @@ class CryptoPrediction:
         window_size = self.seq_len - 1
         self.window_size = window_size
         self.csv_path = csv_path
+        self.hidden_activation = hidden_activation
 
         self.state_fname = f"saved_state/" + directory
         self.state_fname += f"{seq_len=}"
@@ -124,6 +126,7 @@ class CryptoPrediction:
         self.state_fname += f"_{epochs=}"
         self.state_fname += f"_{data_start=}"
         self.state_fname += f"_{neurons=}"
+        self.state_fname += f"_{hidden_activation=}"
 
         self.val_loss_fname = self.state_fname + "_val_loss.npy"
         self.loss_fname = self.state_fname + "_loss.npy"
@@ -154,7 +157,6 @@ class CryptoPrediction:
 
 
     def create_model(self,
-            hidden_activation = "tanh",
             loss_function = "mean_squared_error",
         ):
         """
@@ -167,7 +169,7 @@ class CryptoPrediction:
             units = self.neurons,
             return_sequences = True,
             input_shape = (self.window_size, self.X_train.shape[-1]),
-            activation = hidden_activation
+            activation = self.hidden_activation
         ))
 
         self.model.add(Dropout(rate = self.dropout))
@@ -175,7 +177,7 @@ class CryptoPrediction:
         self.model.add(LSTM(
             units = self.neurons,
             return_sequences = True,
-            activation = hidden_activation
+            activation = self.hidden_activation
         ))
 
         self.model.add(Dropout(rate = self.dropout))
@@ -183,7 +185,7 @@ class CryptoPrediction:
         self.model.add(LSTM(
             units = self.neurons,
             return_sequences = False,
-            activation = hidden_activation
+            activation = self.hidden_activation
         ))
 
         # self.model.add(Dropout(rate = self.dropout))    # Dont know yet whether to use this also.
